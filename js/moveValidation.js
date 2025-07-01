@@ -92,45 +92,14 @@ export async function validateAndScoreMove(word, positionStr, directionOverride)
 
 
 export function parsePosition(posStr, directionOverride) {
-    const matchH = posStr.match(/^([A-O])([1-9]|1[0-5])$/i);
-    const matchV = posStr.match(/^([1-9]|1[0-5])([A-O])$/i);
-    if (directionOverride === 'H') {
-        // Always treat as horizontal, parse as such
-        if (matchH) {
-            const row = matchH[1].toUpperCase().charCodeAt(0) - 65;
-            const col = parseInt(matchH[2], 10) - 1;
-            return { row, col, direction: 'H' };
-        } else if (matchV) {
-            // If user entered 8I but wants H, swap
-            const row = matchV[2].toUpperCase().charCodeAt(0) - 65;
-            const col = parseInt(matchV[1], 10) - 1;
-            return { row, col, direction: 'H' };
-        }
-    } else if (directionOverride === 'V') {
-        // Always treat as vertical, parse as such
-        if (matchV) {
-            const row = parseInt(matchV[1], 10) - 1;
-            const col = matchV[2].toUpperCase().charCodeAt(0) - 65;
-            return { row, col, direction: 'V' };
-        } else if (matchH) {
-            // If user entered I8 but wants V, swap
-            const row = parseInt(matchH[2], 10) - 1;
-            const col = matchH[1].toUpperCase().charCodeAt(0) - 65;
-            return { row, col, direction: 'V' };
-        }
-    } else {
-        // No override, infer from input
-        if (matchH) {
-            const row = matchH[1].toUpperCase().charCodeAt(0) - 65;
-            const col = parseInt(matchH[2], 10) - 1;
-            return { row, col, direction: 'H' };
-        } else if (matchV) {
-            const row = parseInt(matchV[1], 10) - 1;
-            const col = matchV[2].toUpperCase().charCodeAt(0) - 65;
-            return { row, col, direction: 'V' };
-        }
-    }
-    return null;
+    // Always interpret as Letter (column) + Number (row), e.g., J11 means col=9, row=10
+    const match = posStr.match(/^([A-Oa-o])([1-9]|1[0-5])$/);
+    if (!match) return null;
+    const col = match[1].toUpperCase().charCodeAt(0) - 65;
+    const row = parseInt(match[2], 10) - 1;
+    let direction = directionOverride;
+    if (direction !== 'H' && direction !== 'V') direction = 'H'; // Default to horizontal if not specified
+    return { row, col, direction };
 }
 
 export function calculateScore(word, row, col, direction, grid, rack, isFirstMove) {

@@ -187,11 +187,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Direction toggle state
     let currentDirection = 'H';
+    function updateDirectionButton() {
+        directionToggleBtn.textContent = currentDirection === 'H' ? 'Horizontal' : 'Vertical';
+        directionToggleBtn.setAttribute('aria-label', currentDirection === 'H' ? 'Horizontal' : 'Vertical');
+    }
     directionToggleBtn.addEventListener('click', () => {
         currentDirection = currentDirection === 'H' ? 'V' : 'H';
-        directionToggleBtn.textContent = currentDirection;
-        directionToggleBtn.setAttribute('aria-label', currentDirection === 'H' ? 'Horizontal' : 'Vertical');
+        updateDirectionButton();
     });
+    updateDirectionButton();
 
     // --- Highlight cell logic ---
     let highlightedCell = null;
@@ -283,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Prompt next player
     function promptNextPlayerUI() {
         if (gameState.currentPlayerIndex < gameState.players.length) {
-            currentPlayerPrompt.textContent = `À ${gameState.players[gameState.currentPlayerIndex].name} de jouer !`;
+            // currentPlayerPrompt.textContent = `À ${gameState.players[gameState.currentPlayerIndex].name} de jouer !`;
             wordInput.value = '';
             positionInput.value = '';
             wordInput.focus();
