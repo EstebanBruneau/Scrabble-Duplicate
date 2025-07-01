@@ -42,13 +42,13 @@ function wordTouchesExisting(word, row, col, direction, grid) {
     return false;
 }
 
-export async function validateAndScoreMove(word, positionStr) {
+export async function validateAndScoreMove(word, positionStr, directionOverride) {
     const valid = await isWordValid(word);
     if (!valid) return { valid: false, score: 0, reason: "Mot non valide dans l'ODS9" };
     if (!canFormWordFromRack(word, gameState.rack)) {
         return { valid: false, score: 0, reason: "Le mot utilise des lettres non présentes dans le tirage." };
     }
-    const parsedPos = parsePosition(positionStr);
+    const parsedPos = parsePosition(positionStr, directionOverride);
     if (!parsedPos) return { valid: false, score: 0, reason: "Position invalide" };
     const { row, col, direction } = parsedPos;
     // Check placement rules
@@ -74,17 +74,44 @@ export async function validateAndScoreMove(word, positionStr) {
 
 
 
-export function parsePosition(posStr) {
-    const matchH = posStr.match(/^([A-O])(\d{1,2})$/i);
-    const matchV = posStr.match(/^(\d{1,2})([A-O])$/i);
-    if (matchH) {
-        const row = matchH[1].toUpperCase().charCodeAt(0) - 65;
-        const col = parseInt(matchH[2], 10) - 1;
-        return { row, col, direction: 'H' };
-    } else if (matchV) {
-        const row = parseInt(matchV[1], 10) - 1;
-        const col = matchV[2].toUpperCase().charCodeAt(0) - 65;
-        return { row, col, direction: 'V' };
+export function parsePosition(posStr, directionOverride) {
+    const matchH = posStr.match(/^([A-O])([1-9]|1[0-5])$/i);
+    const matchV = posStr.match(/^([1-9]|1[0-5])([A-O])$/i);
+    if (directionOverride === 'H') {
+        // Always treat as horizontal, parse as such
+        if (matchH) {
+            const row = matchH[1].toUpperCase().charCodeAt(0) - 65;
+            const col = parseInt(matchH[2], 10) - 1;
+            return { row, col, direction: 'H' };
+        } else if (matchV) {
+            // If user entered 8I but wants H, swap
+            const row = matchV[2].toUpperCase().charCodeAt(0) - 65;
+            const col = parseInt(matchV[1], 10) - 1;
+            return { row, col, direction: 'H' };
+        }
+    } else if (directionOverride === 'V') {
+        // Always treat as vertical, parse as such
+        if (matchV) {
+            const row = parseInt(matchV[1], 10) - 1;
+            const col = matchV[2].toUpperCase().charCodeAt(0) - 65;
+            return { row, col, direction: 'V' };
+        } else if (matchH) {
+            // If user entered I8 but wants V, swap
+            const row = parseInt(matchH[2], 10) - 1;
+            const col = matchH[1].toUpperCase().charCodeAt(0) - 65;
+            return { row, col, direction: 'V' };
+        }
+    } else {
+        // No override, infer from input
+        if (matchH) {
+            const row = matchH[1].toUpperCase().charCodeAt(0) - 65;
+            const col = parseInt(matchH[2], 10) - 1;
+            return { row, col, direction: 'H' };
+        } else if (matchV) {
+            const row = parseInt(matchV[1], 10) - 1;
+            const col = matchV[2].toUpperCase().charCodeAt(0) - 65;
+            return { row, col, direction: 'V' };
+        }
     }
     return null;
 }

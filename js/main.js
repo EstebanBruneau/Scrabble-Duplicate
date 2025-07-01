@@ -318,14 +318,15 @@ document.addEventListener('DOMContentLoaded', () => {
         stopTimer();
         const word = wordInput.value.trim().toUpperCase();
         const pos = positionInput.value.trim().toUpperCase();
-        console.log('[DEBUG] Soumettre clicked. Word:', word, 'Position:', pos, 'Rack:', [...gameState.rack]);
+        const direction = currentDirection; // Use the direction toggle
+        console.log('[DEBUG] Soumettre clicked. Word:', word, 'Position:', pos, 'Direction:', direction, 'Rack:', [...gameState.rack]);
         if (!word || !pos) {
             console.log('[DEBUG] Missing word or position');
             showMessage('Veuillez entrer un mot et une position.');
             return;
         }
-        // Use moveValidation.js logic (call with only two arguments)
-        const result = await validateAndScoreMove(word, pos);
+        // Use moveValidation.js logic (call with direction override)
+        const result = await validateAndScoreMove(word, pos, direction);
         console.log('[DEBUG] validateAndScoreMove result:', result);
         if (!result.valid) {
             console.log('[DEBUG] Invalid move, reason:', result.reason);
