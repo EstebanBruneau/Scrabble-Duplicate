@@ -58,6 +58,25 @@ export const BONUS_POSITIONS = {
 // --- Game State ---
 export let timerInterval;
 
+export function endTurn() {
+    // Refill rack to 7 letters
+    const needed = 7 - gameState.rack.length;
+    const drawn = gameState.bag.splice(0, needed);
+    gameState.rack.push(...drawn);
+    // If bag and rack are empty, end game
+    if (gameState.bag.length === 0 && gameState.rack.length === 0) {
+        gameState.gameEnded = true;
+        // Optionally trigger end game UI here
+        return;
+    }
+    gameState.currentPlayerIndex = 0;
+    gameState.turn++;
+    gameState.movesThisTurn = 0;
+    if (Array.isArray(gameState.players)) {
+        gameState.players.forEach(p => { if (p) p.move = null; });
+    }
+}
+
 export function createBag() {
     const bag = [];
     for (const letter in LETTRES) {
@@ -110,7 +129,9 @@ export function startTurn() {
     }
     gameState.currentPlayerIndex = 0;
     gameState.movesThisTurn = 0;
-    gameState.players.forEach(p => p.move = null);
+    if (Array.isArray(gameState.players)) {
+        gameState.players.forEach(p => { if (p) p.move = null; });
+    }
 }
 
 // export async function validateAndScoreMove(word, positionStr, directionOverride) {
@@ -267,7 +288,11 @@ document.addEventListener('DOMContentLoaded', () => {
             wordInput.focus();
         } else {
             // All players played, end turn
-            // TODO: handleEndOfTurnInputs();
+            endTurn();
+            renderRackUI();
+            updateScoresUI();
+            updateGameInfoUI();
+            promptNextPlayerUI();
         }
     }
 
