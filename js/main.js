@@ -1,24 +1,16 @@
 // main.js - Scrabble Duplicate Français
 
-// Cache for loaded word lists by length
+// --- ODS9 Dictionary Loader ---
 const dictionaryCache = {};
-
-/**
- * Check if a word is valid using the ODS9 dictionary files.
- * @param {string} word - The word to check (case-insensitive).
- * @returns {Promise<boolean>} - Resolves to true if valid, false otherwise.
- */
 export async function isWordValid(word) {
     const length = word.length;
-    if (length < 2 || length > 21) return false; // ODS9 covers 2-21 letters
+    if (length < 2 || length > 21) return false;
     const fileName = `ODS9/mots${length}lettres.txt`;
-    // Use cache if available
     if (!dictionaryCache[length]) {
         try {
             const response = await fetch(fileName);
             if (!response.ok) return false;
             const text = await response.text();
-            // Each word is on a new line, dictionary is uppercase
             dictionaryCache[length] = new Set(
                 text.split('\n').map(w => w.trim().toUpperCase()).filter(Boolean)
             );
@@ -29,21 +21,7 @@ export async function isWordValid(word) {
     return dictionaryCache[length].has(word.toUpperCase());
 }
 
-// Example usage: test in the console
-document.addEventListener('DOMContentLoaded', () => {
-    // Test the function with a sample word
-    isWordValid('bonjour').then(valid => {
-        console.log('"bonjour" is valid:', valid); // Should be true if in ODS9
-    });
-    isWordValid('xyzabc').then(valid => {
-        console.log('"xyzabc" is valid:', valid); // Should be false
-    });
-});
-
-// --- Add your game logic below ---
-// Example: export or define other functions for game setup, board, etc.
-
-// --- Scrabble Duplicate Constants ---
+// --- Scrabble Constants ---
 export const LETTRES = {
     'A': { valeur: 1, nombre: 9 }, 'B': { valeur: 3, nombre: 2 },
     'C': { valeur: 3, nombre: 2 }, 'D': { valeur: 2, nombre: 3 },
@@ -58,9 +36,8 @@ export const LETTRES = {
     'U': { valeur: 1, nombre: 6 }, 'V': { valeur: 4, nombre: 2 },
     'W': { valeur: 10, nombre: 1}, 'X': { valeur: 10, nombre: 1},
     'Y': { valeur: 10, nombre: 1}, 'Z': { valeur: 10, nombre: 1},
-    '*': { valeur: 0, nombre: 2 } // Joker
+    '*': { valeur: 0, nombre: 2 }
 };
-
 export const GRID_SIZE = 15;
 export const BONUS_TYPES = {
     NONE: 'NONE',
@@ -76,7 +53,10 @@ export const BONUS_POSITIONS = {
     [BONUS_TYPES.LETTER_DOUBLE]: ['0,3', '0,11', '2,6', '2,8', '3,0', '3,7', '3,14', '6,2', '6,6', '6,8', '6,12', '7,3', '7,11', '8,2', '8,6', '8,8', '8,12', '11,0', '11,7', '11,14', '12,6', '12,8', '14,3', '14,11']
 };
 
-// --- Scrabble Duplicate Core Functions ---
+// --- Game State ---
+export let gameState = {};
+export let timerInterval;
+
 export function createBag() {
     const bag = [];
     for (const letter in LETTRES) {
@@ -84,7 +64,6 @@ export function createBag() {
             bag.push(letter);
         }
     }
-    // Shuffle bag (Fisher-Yates)
     for (let i = bag.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [bag[i], bag[j]] = [bag[j], bag[i]];
@@ -107,10 +86,6 @@ export function createGrid() {
     return grid;
 }
 
-// --- Game State and Turn Management (add more as needed) ---
-export let gameState = {};
-export let timerInterval;
-
 export function initGame(playerCount, playerNames) {
     gameState = {
         bag: createBag(),
@@ -123,7 +98,6 @@ export function initGame(playerCount, playerNames) {
         movesThisTurn: 0,
         gameEnded: false
     };
-    // Draw initial rack, update UI, etc. (to be implemented)
 }
 
 export function startTurn() {
@@ -138,68 +112,14 @@ export function startTurn() {
     gameState.currentPlayerIndex = 0;
     gameState.movesThisTurn = 0;
     gameState.players.forEach(p => p.move = null);
-    // Update UI, start timer, etc. (to be implemented)
 }
 
-export function startTimer(onTick, onEnd) {
-    let timeLeft = 180;
-    clearInterval(timerInterval);
-    function updateDisplay() {
-        if (onTick) onTick(timeLeft);
-    }
-    updateDisplay();
-    timerInterval = setInterval(() => {
-        timeLeft--;
-        updateDisplay();
-        if (timeLeft <= 0) {
-            clearInterval(timerInterval);
-            if (onEnd) onEnd();
-        }
-    }, 1000);
-}
-
-export function promptNextPlayer() {
-    if (gameState.currentPlayerIndex < gameState.players.length) {
-        // Focus input, update UI, etc. (to be implemented)
-    } else {
-        // All players played, end turn (to be implemented)
-    }
-}
-
-export function handlePlayerMove(passed = false) {
-    const player = gameState.players[gameState.currentPlayerIndex];
-    if (passed) {
-        player.move = { word: '-', position: null, direction: null, score: 0, valid: true };
-    } else {
-        // Validate and score move (to be implemented)
-    }
-    gameState.currentPlayerIndex++;
-    promptNextPlayer();
-}
-
-export function handleEndOfTurnInputs() {
-    clearInterval(timerInterval);
-    // Hide input, show summary, etc. (to be implemented)
-    setTimeout(() => {
-        // Compute best move, update UI, etc. (to be implemented)
-    }, 100);
-}
-
-export function displayTurnSummary(topMove) {
-    // Show top move, update summary, update board, etc. (to be implemented)
-    gameState.turn++;
-}
-
-// --- Move Validation and Scoring ---
 export async function validateAndScoreMove(word, positionStr) {
-    // 1. Validate word in dictionary
     const valid = await isWordValid(word);
     if (!valid) return { valid: false, score: 0, reason: "Mot non valide dans l'ODS9" };
-    // 2. Parse position
     const parsedPos = parsePosition(positionStr);
     if (!parsedPos) return { valid: false, score: 0, reason: "Position invalide" };
     const { row, col, direction } = parsedPos;
-    // 3. Validate placement and calculate score (to be implemented)
     return calculateScore(word, row, col, direction, gameState.grid, gameState.rack, gameState.isFirstMove);
 }
 
@@ -219,25 +139,15 @@ export function parsePosition(posStr) {
 }
 
 export function calculateScore(word, row, col, direction, grid, rack, isFirstMove) {
-    // Placeholder: implement full scoring logic
-    // Return { valid: true/false, score, ... }
+    // TODO: Implement full scoring logic
     return { valid: true, score: 0, word, row, col, direction, lettersToPlace: [] };
 }
 
 export function placeWordOnGrid(word, row, col, direction) {
-    // Place word on grid (to be implemented)
+    // TODO: Implement word placement on grid
 }
 
-// --- Rendering Functions (stubs) ---
-export function renderBoard() {}
-export function renderRack() {}
-export function updateScores() {}
-export function updateGameInfo() {}
-export function showMessage(msg) { alert(msg); }
-export function hideMessage() {}
-
-// === UI Integration ===
-
+// --- UI Integration ---
 document.addEventListener('DOMContentLoaded', () => {
     // DOM elements
     const setupScreen = document.getElementById('setup-screen');
@@ -348,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
             wordInput.focus();
         } else {
             // All players played, end turn
-            handleEndOfTurnInputs();
+            // TODO: handleEndOfTurnInputs();
         }
     }
 
@@ -369,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
         player.move = { word, position: pos, direction: result.direction, score: result.score, valid: true };
         player.score += result.score;
         placeWordOnGrid(word, result.row, result.col, result.direction);
-        gameState.rack = gameState.rack.filter((l, i) => !result.lettersToPlace.map(x => x.letter).includes(l) || result.lettersToPlace.map(x => x.letter).indexOf(l) !== i);
+        // TODO: update rack correctly after placement
         renderBoardUI();
         renderRackUI();
         updateScoresUI();

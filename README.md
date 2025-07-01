@@ -2,7 +2,6 @@
 
 Welcome to this little Scrabble Duplicate project. This is a web version playable solo.
 
----
 
 **How it works**
 
@@ -14,7 +13,6 @@ Welcome to this little Scrabble Duplicate project. This is a web version playabl
 
 The game ends when there are no more letters in the bag and no more moves are possible.
 
----
 
 ## ✨ Features
 
@@ -24,13 +22,45 @@ The game ends when there are no more letters in the bag and no more moves are po
 * **Automatic Point Calculation:** 
 
 
----
 
 # Extraction des mots
 
 Les listes de mots utilisées dans ce projet sont extraites du site [listesdemots.net](https://www.listesdemots.net/), qui propose des listes exhaustives de l'ODS 9. Un script Python extrait les mots automatiquement parce que j'avais la flemme de tout copier coller. Merci à l'équipe de [listesdemots.net](https://www.listesdemots.net/) pour leur travail et la mise à disposition de ces ressources.
 
----
+# Need to add : 
+
+#### Full scoring logic in calculateScore
+
+Handle Scrabble scoring rules, bonuses, word/letter multipliers, crosswords, and Scrabble bonuses (e.g., 50 points for using all 7 tiles).
+
+#### Word placement logic in placeWordOnGrid
+
+Actually place the word on the grid, lock tiles, and update the grid state.
+
+#### Rack update after word placement
+
+Remove only the used tiles from the player's rack after a valid move.
+
+#### Handle end of turn for all players
+
+Implement handleEndOfTurnInputs to show the turn summary, compute the best move (top), and manage the transition to the next turn.
+
+#### Game end detection and final scoring
+
+Detect when the bag and racks are empty, show the final scores, and display the end-of-game modal.
+
+#### Timer logic and display
+
+Implement the per-turn timer and update the timer display in the UI.
+
+#### Advanced validation
+
+Ensure word placement is legal (touches existing words, fits on the board, etc.).
+
+#### UI polish
+
+Improve board and rack rendering, highlight bonuses, and add visual feedback.
+
 
 ## Ideas for the future
 
