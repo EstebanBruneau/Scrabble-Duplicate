@@ -28,7 +28,7 @@ function stopTimer() {
     clearInterval(timerInterval);
 }
 
-export function renderBoardUI(boardContainer) {
+export function renderBoardUI(boardContainer, highlightedCell) {
     boardContainer.innerHTML = '';
     // Create a wrapper div for the board with labels
     const boardTable = document.createElement('div');
@@ -62,6 +62,10 @@ export function renderBoardUI(boardContainer) {
                 } else if (tile.bonus !== BONUS_TYPES.NONE) {
                     cell.textContent = tile.bonus;
                     cell.classList.add('text-xs', 'text-blue-600');
+                }
+                // Highlight effect
+                if (highlightedCell && highlightedCell.row === r && highlightedCell.col === c) {
+                    cell.classList.add('ring-4', 'ring-blue-400', 'z-10');
                 }
             }
             rowDiv.appendChild(cell);

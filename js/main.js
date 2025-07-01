@@ -1,6 +1,6 @@
 import { gameState } from './gameState.js';
-import { validateAndScoreMove, placeWordOnGrid } from './moveValidation.js';
-import { startTimer, stopTimer } from './ui.js';
+import { validateAndScoreMove, placeWordOnGrid, parsePosition } from './moveValidation.js';
+import { startTimer, stopTimer, renderBoardUI as renderBoardUIWithHighlight } from './ui.js';
 
 
 // --- ODS9 Dictionary Loader ---
@@ -144,21 +144,6 @@ export function startTurn() {
 //     return calculateScore(word, row, col, direction, gameState.grid, gameState.rack, gameState.isFirstMove);
 // }
 
-export function parsePosition(posStr, directionOverride) {
-    const matchH = posStr.match(/^([A-O])(\d{1,2})$/i);
-    const matchV = posStr.match(/^(\d{1,2})([A-O])$/i);
-    if (matchH) {
-        const row = matchH[1].toUpperCase().charCodeAt(0) - 65;
-        const col = parseInt(matchH[2], 10) - 1;
-        return { row, col, direction: directionOverride || 'H' };
-    } else if (matchV) {
-        const row = parseInt(matchV[1], 10) - 1;
-        const col = matchV[2].toUpperCase().charCodeAt(0) - 65;
-        return { row, col, direction: directionOverride || 'V' };
-    }
-    return null;
-}
-
 export function calculateScore(word, row, col, direction, grid, rack, isFirstMove) {
     // TODO: Implement full scoring logic
     return { valid: true, score: 0, word, row, col, direction, lettersToPlace: [] };
@@ -208,6 +193,28 @@ document.addEventListener('DOMContentLoaded', () => {
         directionToggleBtn.setAttribute('aria-label', currentDirection === 'H' ? 'Horizontal' : 'Vertical');
     });
 
+    // --- Highlight cell logic ---
+    let highlightedCell = null;
+    function updateBoardHighlight() {
+        const pos = positionInput.value.trim().toUpperCase();
+        const direction = currentDirection;
+        if (!pos) {
+            highlightedCell = null;
+            renderBoardUIWithHighlight(boardContainer, null);
+            return;
+        }
+        const parsed = parsePosition(pos, direction);
+        if (parsed && parsed.row >= 0 && parsed.row < 15 && parsed.col >= 0 && parsed.col < 15) {
+            highlightedCell = { row: parsed.row, col: parsed.col };
+            renderBoardUIWithHighlight(boardContainer, highlightedCell);
+        } else {
+            highlightedCell = null;
+            renderBoardUIWithHighlight(boardContainer, null);
+        }
+    }
+    positionInput.addEventListener('input', updateBoardHighlight);
+    directionToggleBtn.addEventListener('click', updateBoardHighlight);
+
     // Player name fields
     function updatePlayerNameFields() {
         const count = parseInt(playerCountSelect.value);
@@ -248,22 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Render board
     function renderBoardUI() {
-        boardContainer.innerHTML = '';
-        for (let r = 0; r < GRID_SIZE; r++) {
-            for (let c = 0; c < GRID_SIZE; c++) {
-                const cell = document.createElement('div');
-                cell.className = 'inline-block w-8 h-8 border border-gray-400 text-center align-middle bg-white text-lg font-bold';
-                const tile = gameState.grid[r][c];
-                if (tile.letter) {
-                    cell.textContent = tile.letter;
-                    cell.classList.add('bg-yellow-200');
-                } else if (tile.bonus !== BONUS_TYPES.NONE) {
-                    cell.textContent = tile.bonus;
-                    cell.classList.add('text-xs', 'text-blue-600');
-                }
-                boardContainer.appendChild(cell);
-            }
-        }
+        renderBoardUIWithHighlight(boardContainer, highlightedCell);
     }
 
     // Render rack
@@ -360,6 +352,8 @@ document.addEventListener('DOMContentLoaded', () => {
         updateScoresUI();
         gameState.currentPlayerIndex++;
         promptNextPlayerUI();
+        renderBoardUIWithHighlight(boardContainer, null);
+        highlightedCell = null;
     });
 
     // Pass turn
@@ -369,6 +363,8 @@ document.addEventListener('DOMContentLoaded', () => {
         player.move = { word: '-', position: null, direction: null, score: 0, valid: true };
         gameState.currentPlayerIndex++;
         promptNextPlayerUI();
+        renderBoardUIWithHighlight(boardContainer, null);
+        highlightedCell = null;
     });
 
     // Next turn

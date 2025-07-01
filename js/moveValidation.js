@@ -2,9 +2,17 @@ import { isWordValid } from './dictionary.js';
 import { gameState } from './gameState.js';
 import { LETTRES, BONUS_TYPES } from './constants.js';
 
-function canFormWordFromRack(word, rack) {
+function canFormWordFromRack(word, rack, row, col, direction, grid) {
     const rackCopy = [...rack];
-    for (const letter of word.toUpperCase()) {
+    for (let i = 0; i < word.length; i++) {
+        let r = row + (direction === 'V' ? i : 0);
+        let c = col + (direction === 'H' ? i : 0);
+        const boardLetter = grid && grid[r] && grid[r][c] && grid[r][c].letter ? grid[r][c].letter.toUpperCase() : null;
+        const letter = word[i].toUpperCase();
+        if (boardLetter === letter) {
+            // Letter already on board at this position, skip rack check
+            continue;
+        }
         const idx = rackCopy.indexOf(letter);
         if (idx !== -1) {
             rackCopy.splice(idx, 1);
@@ -45,12 +53,12 @@ function wordTouchesExisting(word, row, col, direction, grid) {
 export async function validateAndScoreMove(word, positionStr, directionOverride) {
     const valid = await isWordValid(word);
     if (!valid) return { valid: false, score: 0, reason: "Mot non valide dans l'ODS9" };
-    if (!canFormWordFromRack(word, gameState.rack)) {
-        return { valid: false, score: 0, reason: "Le mot utilise des lettres non présentes dans le tirage." };
-    }
     const parsedPos = parsePosition(positionStr, directionOverride);
     if (!parsedPos) return { valid: false, score: 0, reason: "Position invalide" };
     const { row, col, direction } = parsedPos;
+    if (!canFormWordFromRack(word, gameState.rack, row, col, direction, gameState.grid)) {
+        return { valid: false, score: 0, reason: "Le mot utilise des lettres non présentes dans le tirage." };
+    }
     // Check placement rules
     if (gameState.isFirstMove) {
         // Must cover center (7,7)
@@ -67,6 +75,15 @@ export async function validateAndScoreMove(word, positionStr, directionOverride)
         // Must touch an existing word
         if (!wordTouchesExisting(word, row, col, direction, gameState.grid)) {
             return { valid: false, score: 0, reason: "Le mot doit être adjacent à un mot déjà placé." };
+        }
+    }
+    // New check: ensure that any existing letter on the board matches the letter in the word
+    for (let i = 0; i < word.length; i++) {
+        let r = row + (direction === 'V' ? i : 0);
+        let c = col + (direction === 'H' ? i : 0);
+        const tile = gameState.grid[r][c];
+        if (tile.letter && tile.letter !== word[i].toUpperCase()) {
+            return { valid: false, score: 0, reason: `La lettre sur la grille (${tile.letter}) ne correspond pas à la lettre du mot (${word[i].toUpperCase()}) à la position ${String.fromCharCode(65 + r)}${c + 1}.` };
         }
     }
     return calculateScore(word, row, col, direction, gameState.grid, gameState.rack, gameState.isFirstMove);
