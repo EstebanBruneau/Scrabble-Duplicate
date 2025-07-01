@@ -3,21 +3,45 @@ import { gameState } from './gameState.js';
 
 export function renderBoardUI(boardContainer) {
     boardContainer.innerHTML = '';
-    for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
+    // Create a wrapper div for the board with labels
+    const boardTable = document.createElement('div');
+    boardTable.className = 'inline-block';
+    // Letters for columns (A-O)
+    const letters = Array.from({ length: GRID_SIZE }, (_, i) => String.fromCharCode(65 + i));
+    // Build the grid with labels
+    for (let r = -1; r < GRID_SIZE; r++) {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'flex';
+        for (let c = -1; c < GRID_SIZE; c++) {
             const cell = document.createElement('div');
-            cell.className = 'inline-block w-8 h-8 border border-gray-400 text-center align-middle bg-white text-lg font-bold';
-            const tile = gameState.grid[r][c];
-            if (tile.letter) {
-                cell.textContent = tile.letter;
-                cell.classList.add('bg-yellow-200');
-            } else if (tile.bonus !== BONUS_TYPES.NONE) {
-                cell.textContent = tile.bonus;
-                cell.classList.add('text-xs', 'text-blue-600');
+            // Top-left corner: empty
+            if (r === -1 && c === -1) {
+                cell.className = 'w-8 h-8';
+            } else if (r === -1) {
+                // Top row: letters
+                cell.className = 'w-8 h-8 flex items-center justify-center font-bold text-gray-600 bg-gray-200 border border-gray-400';
+                cell.textContent = letters[c];
+            } else if (c === -1) {
+                // First column: numbers
+                cell.className = 'w-8 h-8 flex items-center justify-center font-bold text-gray-600 bg-gray-200 border border-gray-400';
+                cell.textContent = (r + 1);
+            } else {
+                // Board cell
+                cell.className = 'w-8 h-8 border border-gray-400 text-center align-middle bg-white text-lg font-bold flex items-center justify-center';
+                const tile = gameState.grid[r][c];
+                if (tile.letter) {
+                    cell.textContent = tile.letter;
+                    cell.classList.add('bg-yellow-200');
+                } else if (tile.bonus !== BONUS_TYPES.NONE) {
+                    cell.textContent = tile.bonus;
+                    cell.classList.add('text-xs', 'text-blue-600');
+                }
             }
-            boardContainer.appendChild(cell);
+            rowDiv.appendChild(cell);
         }
+        boardTable.appendChild(rowDiv);
     }
+    boardContainer.appendChild(boardTable);
 }
 
 export function renderRackUI(letterRack) {
