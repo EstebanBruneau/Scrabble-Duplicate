@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrabble Duplicate Français</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            overflow-y: scroll;
+        }
+        .tile {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1.25rem;
+            text-transform: uppercase;
+        }
+        .rack-tile {
+            width: 50px;
+            height: 50px;
+        }
+        .board-tile {
+            width: 100%;
+            height: 100%;
+            aspect-ratio: 1 / 1;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(15, 1fr);
+            gap: 2px;
+            width: 95vmin;
+            max-width: 700px;
+            margin: auto;
+            border: 4px solid #4a5568;
+        }
+        .grid-cell {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.6rem;
+            font-weight: 500;
+            color: #4a5568;
+            aspect-ratio: 1 / 1;
+        }
+        .bonus-text {
+            position: absolute;
+            text-align: center;
+            line-height: 1;
+        }
+        .tile-on-board .bonus-text {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div id="game-container" class="container mx-auto p-4 max-w-7xl">
+
+        <header class="text-center mb-6">
+            <h1 class="text-4xl font-bold text-gray-700">Scrabble® Duplicate</h1>
+            <p class="text-lg text-gray-500">Édition Française avec Arbitre IA</p>
+        </header>
+        
+        <!-- === Zone de Configuration === -->
+        <div id="setup-screen" class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg">
+            <h2 class="text-2xl font-bold mb-4 text-center">Nouvelle Partie</h2>
+            <div class="mb-4">
+                <label for="player-count" class="block text-sm font-medium text-gray-700 mb-1">Nombre de joueurs humains</label>
+                <select id="player-count" class="w-full p-2 border border-gray-300 rounded-md">
+                    <option value="1">1 (Solo vs IA)</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                </select>
+            </div>
+            <div id="player-names-container" class="space-y-3 mb-6"></div>
+            <button id="start-game-btn" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors">Lancer la Partie</button>
+        </div>
+
+        <!-- === Zone de Jeu (cachée initialement) === -->
+        <main id="game-screen" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+                <!-- Colonne gauche - Infos et Joueurs -->
+                <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg order-2 lg:order-1">
+                    <div id="game-info" class="mb-6">
+                        <h3 class="text-xl font-bold mb-3 border-b pb-2">Infos de la Partie</h3>
+                        <p><strong>Tour :</strong> <span id="turn-number">1</span></p>
+                        <p><strong>Lettres restantes dans le sac :</strong> <span id="bag-count">102</span></p>
+                    </div>
+                    
+                    <div id="players-scores">
+                        <h3 class="text-xl font-bold mb-3 border-b pb-2">Scores</h3>
+                        <div id="scores-container" class="space-y-2"></div>
+                    </div>
+                    
+                     <div id="turn-summary" class="mt-6 hidden">
+                        <h3 class="text-xl font-bold mb-3 border-b pb-2">Résumé du Tour</h3>
+                        <p class="font-semibold text-blue-600">Top de l'IA : <span id="top-move-info"></span></p>
+                        <p class="text-sm text-gray-500">Le mot a été placé sur la grille.</p>
+                        <div id="player-moves-summary" class="mt-3 space-y-1"></div>
+                    </div>
+                </div>
+
+                <!-- Colonne centrale - Grille et Tirage -->
+                <div class="lg:col-span-3 order-1 lg:order-2">
+                    <div id="board-container" class="grid-container bg-gray-300 rounded-lg p-2 shadow-inner">
+                        <!-- La grille de 15x15 sera générée par JS -->
+                    </div>
+                    
+                    <div id="rack-and-controls" class="mt-6 bg-white p-6 rounded-xl shadow-lg">
+                        <div class="text-center mb-4">
+                            <h3 class="text-xl font-bold">Tirage du Tour (<span id="timer">3:00</span>)</h3>
+                            <div id="letter-rack" class="flex justify-center items-center space-x-2 mt-3">
+                                <!-- Les 7 lettres du tirage seront générées par JS -->
+                            </div>
+                        </div>
+
+                        <div id="input-section">
+                             <p id="current-player-prompt" class="text-center font-semibold text-lg mb-3"></p>
+                             <div class="max-w-lg mx-auto grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                 <input type="text" id="word-input" placeholder="Votre mot" class="sm:col-span-2 p-3 border border-gray-300 rounded-md uppercase focus:ring-2 focus:ring-blue-500">
+                                 <input type="text" id="position-input" placeholder="Position (ex: H8)" class="p-3 border border-gray-300 rounded-md uppercase focus:ring-2 focus:ring-blue-500">
+                             </div>
+                             <div class="max-w-lg mx-auto flex space-x-3 mt-3">
+                                <button id="submit-move-btn" class="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition-colors">Soumettre</button>
+                                <button id="pass-turn-btn" class="flex-1 bg-yellow-500 text-white py-3 rounded-lg font-bold hover:bg-yellow-600 transition-colors">Passer (0 pt)</button>
+                             </div>
+                        </div>
+                        
+                        <div id="next-turn-container" class="text-center mt-4 hidden">
+                            <button id="next-turn-btn" class="bg-blue-600 text-white py-3 px-8 rounded-lg font-bold hover:bg-blue-700 transition-colors">Tour Suivant</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- === Modal de Fin de Partie === -->
+        <div id="game-over-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden">
+            <div class="bg-white rounded-xl shadow-2xl p-8 max-w-lg w-full text-center transform transition-all scale-95 opacity-0">
+                <h2 class="text-3xl font-bold mb-4">Partie Terminée !</h2>
+                <div id="final-scores" class="mb-6 space-y-2"></div>
+                <button id="play-again-btn" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors">Rejouer</button>
+            </div>
+        </div>
+        
+        <!-- === Modal de Message === -->
+        <div id="message-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden">
+            <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center transform transition-all scale-95 opacity-0">
+                <p id="message-text" class="text-lg"></p>
+                <button id="close-message-btn" class="mt-4 bg-gray-300 text-gray-800 py-2 px-6 rounded-lg font-bold hover:bg-gray-400 transition-colors">OK</button>
+            </div>
+        </div>
+    </div>
+
+<script type="module">
+    // ===================================================================================
+    // DICTIONNAIRE ET CONFIGURATION DU JEU
+    // IMPORTANT: Ceci est un dictionnaire réduit pour des raisons de performance et de taille.
+    // Pour une version complète, il faudrait charger l'ODS 9 (~430,000 mots).
+    // ===================================================================================
+    const DICTIONARY_PARTIAL = ["AA", "AAS", "ABA", "ABACA", "ABACAS", "ABACULE", "ABACULES", "ABAISSA", "ABAISSABLE", "ABAISSABLES", "ABAISSAI", "ABAISSAIENT", "ABAISSAIS", "ABAISSAIT", "ABAISSAMES", "ABAISSANT", "ABAISSANTE", "ABAISSANTES", "ABAISSANTS", "ABAISSAS", "ABAISSASSE", "ABAISSASSENT", "ABAISSASSES", "ABAISSASSIEZ", "ABAISSASSIONS", "ABAISSAT", "ABAISSATES", "ABAISSE", "ABAISSEE", "ABAISSEES", "ABAISSEMENT", "ABAISSEMENTS", "ABAISSENT", "ABAISSER", "ABAISSERA", "ABAISSERAI", "ABAISSERAIENT", "ABAISSERAIS", "ABAISSERAIT", "ABAISSERAS", "ABAISSERENT", "ABAISSEREZ", "ABAISSERIEZ", "ABAISSERIONS", "ABAISSERONS", "ABAISSERONT", "ABAISSES", "ABAISSEUR", "ABAISSEURS", "ABAISSEZ", "ABAISSIEZ", "ABAISSIONS", "ABAISSONS", "ABALONE", "ABALONES", "ABANDON", "ABANDONNA", "ABANDONNAI", "ABANDONNAIENT", "ABANDONNAIS", "ABANDONNAIT", "ABANDONNAMES", "ABANDONNANT", "ABANDONNAS", "ABANDONNASSE", "ABANDONNASSENT", "ABANDONNASSES", "ABANDONNASSIEZ", "ABANDONNASSIONS", "ABANDONNAT", "ABANDONNATAIRE", "ABANDONNATAIRES", "ABANDONNATES", "ABANDONNATEUR", "ABANDONNATEURS", "ABANDONNATRICE", "ABANDONNATRICES", "ABANDONNE", "ABANDONNEE", "ABANDONNEES", "ABANDONNEMENT", "ABANDONNEMENTS", "ABANDONNENT", "ABANDONNER", "ABANDONNERA", "ABANDONNERAI", "ABANDONNERAIENT", "ABANDONNERAIS", "ABANDONNERAIT", "ABANDONNERAS", "ABANDONNERENT", "ABANDONNEREZ", "ABANDONNERIEZ", "ABANDONNERIONS", "ABANDONNERONS", "ABANDONNERONT", "ABANDONNES", "ABANDONNEZ", "ABANDONNIEZ", "ABANDONNIONS", "ABANDONNIQUE", "ABANDONNIQUES", "ABANDONNONS", "ABANDONS", "ABAQUE", "ABAQUES", "ABASOURDI", "ABASOURDIE", "ABASOURDIES", "ABASOURDIMES", "ABASOURDIR", "ABASOURDIRA", "ABASOURDIRAI", "ABASOURDIRAIENT", "ABASOURDIRAIS", "ABASOURDIRAIT", "ABASOURDIRAS", "ABASOURDIRENT", "ABASOURDIREZ", "ABASOURDIRIEZ", "ABASOURDIRIONS", "ABASOURDIRONS", "ABASOURDIRONT", "ABASOURDIS", "ABASOURDISSAIENT", "ABASOURDISSAIS", "ABASOURDISSAIT", "ABASOURDISSANT", "ABASOURDISSANTE", "ABASOURDISSANTES", "ABASOURDISSANTS", "ABASOURDISSE", "ABASOURDISSENT", "ABASOURDISSES", "ABASOURDISSEZ", "ABASOURDISSIEZ", "ABASOURDISSIONS", "ABASOURDISSONS", "ABASOURDIT", "ABASOURDITES", "ABAT", "ABATAGE", "ABATAGES", "ABATEE", "ABATEES", "ABATIS", "ABATTABLE", "ABATTABLES", "ABATTAGE", "ABATTAGES", "ABATTAIENT", "ABATTAIS", "ABATTAIT", "ABATTANT", "ABATTANTS", "ABATTE", "ABATTEE", "ABATTEES", "ABATTEMENT", "ABATTEMENTS", "ABATTENT", "ABATTES", "ABATTEUR", "ABATTEURS", "ABATTEUSE", "ABATTEUSES", "ABATTEZ", "ABATTIEZ", "ABATTIONS", "ABATTOIR", "ABATTOIRS", "ABATTONS", "ABATTRA", "ABATTRAI", "ABATTRAIENT", "ABATTRAIS", "ABATTRAIT", "ABATTRAS", "ABATTRE", "ABATTREZ", "ABATTRIEZ", "ABATTRIONS", "ABATTRONS", "ABATTRONT", "ABATTU", "ABATTUE", "ABATTUES", "ABATTURE", "ABATTURES", "ABATTUS", "ABATVENTS", "ABBE", "ABBES", "ABBESSE", "ABBESSES", "ABBATIAL", "ABBATIALE", "ABBATIALES", "ABBATIAUX", "ABBAYE", "ABBAYES", "ABC", "ABCEDA", "ABCEDAI", "ABCEDAIENT", "ABCEDAIS", "ABCEDAIT", "ABCEDAMES", "ABCEDANT", "ABCEDAS", "ABCEDASSE", "ABCEDASSENT", "ABCEDASSES", "ABCEDASSIEZ", "ABCEDASSIONS", "ABCEDAT", "ABCEDATES", "ABCEDE", "ABCEDEE", "ABCEDEES", "ABCEDENT", "ABCEDER", "ABCEDERA", "ABCEDERAI", "ABCEDERAIENT", "ABCEDERAIS", "ABCEDERAIT", "ABCEDERAS", "ABCEDERENT", "ABCEDEREZ", "ABCEDERIEZ", "ABCEDERIONS", "ABCEDERONS", "ABCEDERONT", "ABCEDES", "ABCEDEZ", "ABCEDIEZ", "ABCEDIONS", "ABCEDONS", "ABCS", "ABDICATION", "ABDICATIONS", "ABDIQUA", "ABDIQUAI", "ABDIQUAIENT", "ABDIQUAIS", "ABDIQUAIT", "ABDIQUAMES", "ABDIQUANT", "ABDIQUAS", "ABDIQUASSE", "ABDIQUASSENT", "ABDIQUASSES", "ABDIQUASSIEZ", "ABDIQUASSIONS", "ABDIQUAT", "ABDIQUATES", "ABDIQUE", "ABDIQUENT", "ABDIQUER", "ABDIQUERA", "ABDIQUERAI", "ABDIQUERAIENT", "ABDIQUERAIS", "ABDIQUERAIT", "ABDIQUERAS", "ABDIQUERENT", "ABDIQUEREZ", "ABDIQUERIEZ", "ABDIQUERIONS", "ABDIQUERONS", "ABDIQUERONT", "ABDIQUES", "ABDIQUEZ", "ABDIQUIEZ", "ABDIQUIONS", "ABDIQUONS", "ABDOMEN", "ABDOMENS", "ABDOMINAL", "ABDOMINALE", "ABDOMINALES", "ABDOMINAUX", "ABDUCTEUR", "ABDUCTEURS", "ABDUCTION", "ABDUCTIONS", "ABECEDAIRE", "ABECEDAIRES", "ABEE", "ABEES", "ABEILLE", "ABEILLER", "ABEILLERE", "ABEILLERES", "ABEILLERS", "ABEILLES", "ABER", "ABERRA", "ABERRAI", "ABERRAIENT", "ABERRAIS", "ABERRAIT", "ABERRAMES", "ABERRANCE", "ABERRANCES", "ABERRANT", "ABERRANTE", "ABERRANTES", "ABERRANTS", "ABERRAS", "ABERRASSE", "ABERRASSENT", "ABERRASSES", "ABERRASSIEZ", "ABERRASSIONS", "ABERRAT", "ABERRATES", "ABERRATION", "ABERRATIONS", "ABERRE", "ABERRENT", "ABERRER", "ABERRERA", "ABERRERAI", "ABERRERAIENT", "ABERRERAIS", "ABERRERAIT", "ABERRERAS", "ABERRERENT", "ABERREREZ", "ABERRERIEZ", "ABERRERIONS", "ABERRERONS", "ABERRERONT", "ABERRES", "ABERREZ", "ABERRIEZ", "ABERRIONS", "ABERRONS", "ABERS", "ABETI", "ABETIE", "ABETIES", "ABETIMES", "ABETIR", "ABETIRA", "ABETIRAI", "ABETIRAIENT", "ABETIRAIS", "ABETIRAIT", "ABETIRAS", "ABETIRENT", "ABETIREZ", "ABETIRIEZ", "ABETIRIONS", "ABETIRONS", "ABETIRONT", "ABETIS", "ABETISSAGE", "ABETISSAGES", "ABETISSAIENT", "ABETISSAIS", "ABETISSAIT", "ABETISSANT", "ABETISSANTE", "ABETISSANTES", "ABETISSANTS", "ABETISSE", "ABETISSEMENT", "ABETISSEMENTS", "ABETISSENT", "ABETISSES", "ABETISSEZ", "ABETISSIEZ", "ABETISSIONS", "ABETISSONS", "ABETIT", "ABETITES", "ABHORRA", "ABHORRAI", "ABHORRAIENT", "ABHORRAIS", "ABHORRAIT", "ABHORRAMES", "ABHORRANT", "ABHORRAS", "ABHORRASSE", "ABHORRASSENT", "ABHORRASSES", "ABHORRASSIEZ", "ABHORRASSIONS", "ABHORRAT", "ABHORRATES", "ABHORRATION", "ABHORRATIONS", "ABHORRE", "ABHORREE", "ABHORREES", "ABHORRENT", "ABHORRER", "ABHORRERA", "ABHORRERAI", "ABHORRERAIENT", "ABHORRERAIS", "ABHORRERAIT", "ABHORRERAS", "ABHORRERENT", "ABHORREREZ", "ABHORRERIEZ", "ABHORRERIONS", "ABHORRERONS", "ABHORRERONT", "ABHORRES", "ABHORREZ", "ABHORRIEZ", "ABHORRIONS", "ABHORRONS", "ABIME", "ABIMEE", "ABIMEES", "ABIMES", "ABIMA", "ABIMAI", "ABIMAIENT", "ABIMAIS", "ABIMAIT", "ABIMAMES", "ABIMANT", "ABIMAS", "ABIMASSE", "ABIMASSENT", "ABIMASSES", "ABIMASSIEZ", "ABIMASSIONS", "ABIMAT", "ABIMATES", "ABIMENT", "ABIMER", "ABIMERA", "ABIMERAI", "ABIMERAIENT", "ABIMERAIS", "ABIMERAIT", "ABIMERAS", "ABIMERENT", "ABIMEREZ", "ABIMERIEZ", "ABIMERIONS", "ABIMERONS", "ABIMERONT", "ABIMEZ", "ABIMIEZ", "ABIMIONS", "ABIMONS", "ABJECT", "ABJECTE", "ABJECTEMENT", "ABJECTES", "ABJECTION", "ABJECTIONS", "ABJECTS", "ABJURA", "ABJURAI", "ABJURAIENT", "ABJURAIS", "ABJURAIT", "ABJURAMES", "ABJURANT", "ABJURAS", "ABJURASSE", "ABJURASSENT", "ABJURASSES", "ABJURASSIEZ", "ABJURASSIONS", "ABJURAT", "ABJURATES", "ABJURATION", "ABJURATIONS", "ABJURE", "ABJUREE", "ABJUREES", "ABJURENT", "ABJURER", "ABJURERA", "ABJURERAIAX", "AXE", "AXEL", "AXELS", "AXENE", "AXENES", "AXIAL", "AXIALE", "AXIALES", "AXIAUX", "AXILE", "AXILES", "AXIOME", "AXIOMES", "AXIS", "AXOA", "AXOAS", "AXOLOTL", "AXOLOTLS", "AXONE", "AXONES", "AXONGE", "AXONGES", "AY", "AYS", "AYURVEDA", "AYURVEDAS", "AYURVEDIQUE", "AYURVEDIQUES", "AZALEE", "AZALEES", "AZERI", "AZERIE", "AZERIES", "AZERIS", "AZERTY", "AZIMUT", "AZIMUTAL", "AZIMUTALE", "AZIMUTALES", "AZIMUTAUX", "AZIMUTE", "AZIMUTEE", "AZIMUTEES", "AZIMUTES", "AZIMUTS", "AZOBE", "AZOBES", "AZOIQUE", "AZOIQUES", "AZOLLA", "AZOLLAS", "AZOR", "AZORA", "AZORAI", "AZORAIENT", "AZORAIS", "AZORAIT", "AZORAMES", "AZORANT", "AZORAS", "AZORASSE", "AZORASSENT", "AZORASSES", "AZORASSIEZ", "AZORASSIONS", "AZORAT", "AZORATES", "AZORE", "AZOREE", "AZOREES", "AZORENT", "AZORER", "AZORERA", "AZORERAI", "AZORERAIENT", "AZORERAIS", "AZORERAIT", "AZORERAS", "AZORERENT", "AZOREREZ", "AZORERIEZ", "AZORERIONS", "AZORERONS", "AZORERONT", "AZORES", "AZORS", "AZORURES", "AZOTATE", "AZOTATES", "AZOTE", "AZOTEE", "AZOTEES", "AZOTES", "AZOTEUX", "AZOTIQUE", "AZOTIQUES", "AZOTURE", "AZOTURES", "AZTEQUE", "AZTEQUES", "AZUR", "AZURA", "AZURAGE", "AZURAGES", "AZURAI", "AZURAIENT", "AZURAIS", "AZURAIT", "AZURAMES", "AZURANT", "AZURANTE", "AZURANTES", "AZURANTS", "AZURAS", "AZURASSE", "AZURASSENT", "AZURASSES", "AZURASSIEZ", "AZURASSIONS", "AZURAT", "AZURATES", "AZURE", "AZUREE", "AZUREES", "AZUREEN", "AZUREENNE", "AZUREENNES", "AZUREENS", "AZURENT", "AZURER", "AZURERA", "AZURERAI", "AZURERAIENT", "AZURERAIS", "AZURERAIT", "AZURERAS", "AZURERENT", "AZUREREZ", "AZURERIEZ", "AZURERIONS", "AZURERONS", "AZURERONT", "AZURES", "AZUREZ", "AZURIEZ", "AZURIONS", "AZURITE", "AZURITES", "AZURONS", "AZURS", "AZYME", "AZYMES", "BA", "BAAS", "BABA", "BABAS", "BABEL", "BABELS", "BABI", "BABIES", "BABIL", "BABILES", "BABILLA", "BABILLAI", "BABILLAIENT", "BABILLAIS", "BABILLAIT", "BABILLAMES", "BABILLANT", "BABILLARDE", "BABILLARDES", "BABILLARDS", "BABILLAS", "BABILLASSE", "BABILLASSENT", "BABILLASSES", "BABILLASSIEZ", "BABILLASSIONS", "BABILLAT", "BABILLATES", "BABILLE", "BABILLENT", "BABILLER", "BABILLERA", "BABILLERAI", "BABILLERAIENT", "BABILLERAIS", "BABILLERAIT", "BABILLERAS", "BABILLERENT", "BABILLEREZ", "BABILLERIEZ", "BABILLERIONS", "BABILLERONS", "BABILLERONT", "BABILLES", "BABILLEZ", "BABILLIEZ", "BABILLIONS", "BABILLONS", "BABILS", "BABINE", "BABINES", "BABIOLE", "BABIROUSSA", "BABIROUSSAS", "BABIS", "BABKA", "BABKAS", "BABOL", "BABOLS", "BABORD", "BABORDS", "BABOUCHE", "BABOUCHES", "BABOUIN", "BABOUINE", "BABOUINES", "BABOUINS", "BABOUK", "BABOUKS", "BABY", "BABYBOOM", "BABYBOOMS", "BABYBOUM", "BABYBOUMS", "BABYFOOT", "BABYFOOTS", "BABYS", "BABYSITTING", "BABYSITTINGS", "BABYSITTEUR", "BABYSITTEURS", "BABYSITTEUSE", "BABYSITTEUSES", "BAC", "BACCARA", "BACCARAS", "BACCARAT", "BACCARATS", "BACCHA", "BACCHANAL", "BACCHANALE", "BACCHANALES", "BACCHANALS", "BACCHANT", "BACCHANTE", "BACCHANTES", "BACCHANTS", "BACH", "BACHA", "BACHAI", "BACHAIENT", "BACHAIS", "BACHAIT", "BACHAMES", "BACHANT", "BACHAS", "BACHASSE", "BACHASSENT", "BACHASSES", "BACHASSIEZ", "BACHASSIONS", "BACHAGAS", "BACHAT", "BACHATA", "BACHATAS", "BACHATES", "BACHE", "BACHEE", "BACHEES", "BACHELIER", "BACHELIERE", "BACHELIERES", "BACHELIERS", "BACHELOR", "BACHELORS", "BACHENT", "BACHER", "BACHERA", "BACHERAI", "BACHERAIENT", "BACHERAIS", "BACHERAIT", "BACHERAS", "BACHERENT", "BACHEREZ", "BACHERIEZ", "BACHERIONS", "BACHERONS", "BACHERONT", "BACHES", "BACHHS", "BACHIQUE", "BACHIQUES", "BACHOT", "BACHOTA", "BACHOTAGE", "BACHOTAGES", "BACHOTAI", "BACHOTAIENT", "BACHOTAIS", "BACHOTAIT", "BACHOTAMES", "BACHOTANT", "BACHOTAS", "BACHOTASSE", "BACHOTASSENT", "BACHOTASSES", "BACHOTASSIEZ", "BACHOTASSIONS", "BACHOTAT", "BACHOTATES", "BACHOTE", "BACHOTENT", "BACHOTER", "BACHOTERA", "BACHOTERAI", "BACHOTERAIENT", "BACHOTERAIS", "BACHOTERAIT", "BACHOTERAS", "BACHOTERENT", "BACHOTEREZ", "BACHOTERIEZ", "BACHOTERIONS", "BACHOTERONS", "BACHOTERONT", "BACHOTES", "BACHOTEUR", "BACHOTEURS", "BACHOTEUSE", "BACHOTEUSES", "BACHOTEZ", "BACHOTIEZ", "BACHOTIONS", "BACHOTONS", "BACHOTS", "BACHEZ", "BACHIEZ", "BACHIONS", "BACHONS", "BACILLE", "BACILLES", "BACILLAIRE", "BACILLAIRES", "BACILLOSE", "BACILLOSES", "BACKEOFE", "BACKEOFES", "BACKGAMMON", "BACKGAMMONS", "BACKGROUND", "BACKGROUNDS", "BACKUP", "BACKUPS", "BACON", "BACONS", "BACS", "BACOVE", "BACOVES", "BACTRACIEN", "BACTRACIENS", "BAD", "BADA", "BADABOUM", "BADAI", "BADAIENT", "BADAIS", "BADAIT", "BADAMES", "BADAMIEN", "BADAMIENNE", "BADAMIENNES", "BADAMIENS", "BADANT", "BADAS", "BADASSE", "BADASSENT", "BADASSES", "BADASSIEZ", "BADASSIONS", "BADAT", "BADATES", "BADAUDA", "BADAUDAI", "BADAUDAIENT", "BADAUDAIS", "BADAUDAIT", "BADAUDAMES", "BADAUDAUD", "BADAUDAUDE", "BADAUDAUDES", "BADAUDS", "BADAUDANT", "BADAUDAS", "BADAUDASSE", "BADAUDASSENT", "BADAUDASSES", "BADAUDASSIEZ", "BADAUDASSIONS", "BADAUDAT", "BADAUDATES", "BA", "BE", "BI", "BO", "BU", "BY", "CA", "CE", "CI", "DA", "DE", "DO", "DU", "EH", "EN", "ES", "ET", "EU", "FA", "FI", "GO", "HA", "HE", "HI", "HO", "IF", "IL", "IN", "JE", "KA", "LA", "LE", "LI", "LU", "MA", "ME", "MI", "MU", "NA", "NE", "NI", "NO", "NU", "OH", "ON", "OR", "OS", "OU", "PI", "PU", "QI", "RA", "RE", "RI", "RU", "SA", "SE", "SI", "SU", "TA", "TE", "TU", "UN", "US", "UT", "VA", "VE", "VS", "VU", "XI", "QI", "WU"];
+    const DICTIONARY = new Set(DICTIONARY_PARTIAL);
+
+    const LETTRES = {
+        'A': { valeur: 1, nombre: 9 }, 'B': { valeur: 3, nombre: 2 },
+        'C': { valeur: 3, nombre: 2 }, 'D': { valeur: 2, nombre: 3 },
+        'E': { valeur: 1, nombre: 15}, 'F': { valeur: 4, nombre: 2 },
+        'G': { valeur: 2, nombre: 2 }, 'H': { valeur: 4, nombre: 2 },
+        'I': { valeur: 1, nombre: 8 }, 'J': { valeur: 8, nombre: 1 },
+        'K': { valeur: 10, nombre: 1}, 'L': { valeur: 1, nombre: 5 },
+        'M': { valeur: 2, nombre: 3 }, 'N': { valeur: 1, nombre: 6 },
+        'O': { valeur: 1, nombre: 6 }, 'P': { valeur: 3, nombre: 2 },
+        'Q': { valeur: 8, nombre: 1 }, 'R': { valeur: 1, nombre: 6 },
+        'S': { valeur: 1, nombre: 6 }, 'T': { valeur: 1, nombre: 6 },
+        'U': { valeur: 1, nombre: 6 }, 'V': { valeur: 4, nombre: 2 },
+        'W': { valeur: 10, nombre: 1}, 'X': { valeur: 10, nombre: 1},
+        'Y': { valeur: 10, nombre: 1}, 'Z': { valeur: 10, nombre: 1},
+        '*': { valeur: 0, nombre: 2 } // Joker
+    };
+
+    const GRID_SIZE = 15;
+    const BONUS_TYPES = {
+        NONE: 'NONE',
+        LETTER_DOUBLE: 'LD',
+        LETTER_TRIPLE: 'LT',
+        WORD_DOUBLE: 'MD',
+        WORD_TRIPLE: 'MT'
+    };
+
+    const BONUS_POSITIONS = {
+        [BONUS_TYPES.WORD_TRIPLE]: ['0,0', '0,7', '0,14', '7,0', '7,14', '14,0', '14,7', '14,14'],
+        [BONUS_TYPES.WORD_DOUBLE]: ['1,1', '2,2', '3,3', '4,4', '1,13', '2,12', '3,11', '4,10', '13,1', '12,2', '11,3', '10,4', '13,13', '12,12', '11,11', '10,10'],
+        [BONUS_TYPES.LETTER_TRIPLE]: ['1,5', '1,9', '5,1', '5,5', '5,9', '5,13', '9,1', '9,5', '9,9', '9,13', '13,5', '13,9'],
+        [BONUS_TYPES.LETTER_DOUBLE]: ['0,3', '0,11', '2,6', '2,8', '3,0', '3,7', '3,14', '6,2', '6,6', '6,8', '6,12', '7,3', '7,11', '8,2', '8,6', '8,8', '8,12', '11,0', '11,7', '11,14', '12,6', '12,8', '14,3', '14,11']
+    };
+
+    // ===================================================================================
+    // ÉLÉMENTS DU DOM
+    // ===================================================================================
+    const setupScreen = document.getElementById('setup-screen');
+    const gameScreen = document.getElementById('game-screen');
+    const playerCountSelect = document.getElementById('player-count');
+    const playerNamesContainer = document.getElementById('player-names-container');
+    const startGameBtn = document.getElementById('start-game-btn');
+    const boardContainer = document.getElementById('board-container');
+    const letterRack = document.getElementById('letter-rack');
+    const wordInput = document.getElementById('word-input');
+    const positionInput = document.getElementById('position-input');
+    const submitMoveBtn = document.getElementById('submit-move-btn');
+    const passTurnBtn = document.getElementById('pass-turn-btn');
+    const scoresContainer = document.getElementById('scores-container');
+    const turnNumberEl = document.getElementById('turn-number');
+    const bagCountEl = document.getElementById('bag-count');
+    const timerEl = document.getElementById('timer');
+    const gameOverModal = document.getElementById('game-over-modal');
+    const finalScoresEl = document.getElementById('final-scores');
+    const playAgainBtn = document.getElementById('play-again-btn');
+    const currentPlayerPrompt = document.getElementById('current-player-prompt');
+    const nextTurnContainer = document.getElementById('next-turn-container');
+    const nextTurnBtn = document.getElementById('next-turn-btn');
+    const turnSummary = document.getElementById('turn-summary');
+    const topMoveInfoEl = document.getElementById('top-move-info');
+    const playerMovesSummaryEl = document.getElementById('player-moves-summary');
+    const messageModal = document.getElementById('message-modal');
+    const messageText = document.getElementById('message-text');
+    const closeMessageBtn = document.getElementById('close-message-btn');
+
+    // ===================================================================================
+    // LOGIQUE DU JEU
+    // ===================================================================================
+    let gameState = {};
+    let timerInterval;
+
+    function createBag() {
+        const bag = [];
+        for (const letter in LETTRES) {
+            for (let i = 0; i < LETTRES[letter].nombre; i++) {
+                bag.push(letter);
+            }
+        }
+        // Mélange du sac (algorithme de Fisher-Yates)
+        for (let i = bag.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [bag[i], bag[j]] = [bag[j], bag[i]];
+        }
+        return bag;
+    }
+
+    function createGrid() {
+        const grid = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null).map(() => ({
+            letter: null,
+            bonus: BONUS_TYPES.NONE,
+            locked: false
+        })));
+        for (const type in BONUS_POSITIONS) {
+            BONUS_POSITIONS[type].forEach(pos => {
+                const [r, c] = pos.split(',').map(Number);
+                grid[r][c].bonus = type;
+            });
+        }
+        return grid;
+    }
+
+    function initGame() {
+        const playerCount = parseInt(playerCountSelect.value);
+        const playerNames = [];
+        for (let i = 0; i < playerCount; i++) {
+            const input = document.getElementById(`player-name-${i}`);
+            playerNames.push(input.value || `Joueur ${i + 1}`);
+        }
+
+        gameState = {
+            players: playerNames.map(name => ({ name, score: 0, move: null })),
+            grid: createGrid(),
+            bag: createBag(),
+            rack: [],
+            turn: 1,
+            isFirstMove: true,
+            currentPlayerIndex: 0,
+            movesThisTurn: 0,
+            gameEnded: false
+        };
+        
+        setupScreen.classList.add('hidden');
+        gameScreen.classList.remove('hidden');
+        gameOverModal.classList.add('hidden');
+        
+        renderBoard();
+        updateScores();
+        startTurn();
+    }
+    
+    function startTurn() {
+        if(gameState.gameEnded) return;
+        
+        // Compléter le tirage à 7 lettres
+        const needed = 7 - gameState.rack.length;
+        const drawn = gameState.bag.splice(0, needed);
+        gameState.rack.push(...drawn);
+        
+        if (gameState.rack.length === 0) {
+            endGame();
+            return;
+        }
+
+        gameState.currentPlayerIndex = 0;
+        gameState.movesThisTurn = 0;
+        gameState.players.forEach(p => p.move = null);
+
+        turnSummary.classList.add('hidden');
+        document.getElementById('input-section').classList.remove('hidden');
+        nextTurnContainer.classList.add('hidden');
+
+        updateGameInfo();
+        renderRack();
+        promptNextPlayer();
+        startTimer();
+    }
+    
+    function startTimer() {
+        let timeLeft = 180; // 3 minutes
+        clearInterval(timerInterval);
+        
+        function updateDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        updateDisplay();
+
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            updateDisplay();
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                timerEl.textContent = "Temps écoulé !";
+                handleEndOfTurnInputs();
+            }
+        }, 1000);
+    }
+    
+    function promptNextPlayer() {
+        if (gameState.currentPlayerIndex < gameState.players.length) {
+            const playerName = gameState.players[gameState.currentPlayerIndex].name;
+            currentPlayerPrompt.textContent = `Au tour de ${playerName} de jouer...`;
+            wordInput.value = '';
+            positionInput.value = '';
+            wordInput.focus();
+        } else {
+            handleEndOfTurnInputs();
+        }
+    }
+    
+    function handlePlayerMove(passed = false) {
+        const player = gameState.players[gameState.currentPlayerIndex];
+        if (passed) {
+            player.move = { word: '-', position: null, direction: null, score: 0, valid: true };
+        } else {
+            const word = wordInput.value.toUpperCase();
+            const position = positionInput.value.toUpperCase();
+            if (!word || !position) {
+                showMessage("Veuillez entrer un mot et une position.");
+                return;
+            }
+            player.move = validateAndScoreMove(word, position);
+        }
+
+        gameState.currentPlayerIndex++;
+        promptNextPlayer();
+    }
+    
+    function handleEndOfTurnInputs() {
+        clearInterval(timerInterval);
+        timerEl.textContent = "Calcul en cours...";
+        document.getElementById('input-section').classList.add('hidden');
+        currentPlayerPrompt.textContent = "L'arbitre IA calcule le meilleur coup...";
+
+        // Utiliser setTimeout pour permettre au DOM de se mettre à jour avant le calcul intensif
+        setTimeout(() => {
+            const topMove = findTopMove();
+            
+            // Appliquer le top move à la grille
+            if(topMove) {
+                placeWordOnGrid(topMove.word, topMove.row, topMove.col, topMove.direction);
+                gameState.isFirstMove = false;
+                // Retirer les lettres utilisées du tirage
+                const lettersOnRack = [...gameState.rack];
+                let usedFromRack = 0;
+                topMove.lettersToPlace.forEach(l => {
+                    const index = lettersOnRack.indexOf(l.letter);
+                    if (index > -1) {
+                        lettersOnRack.splice(index, 1);
+                        usedFromRack++;
+                    }
+                });
+                gameState.rack = lettersOnRack;
+            }
+            
+            // Mettre à jour les scores des joueurs
+            gameState.players.forEach(player => {
+                if (player.move && player.move.valid) {
+                    player.score += player.move.score;
+                }
+            });
+
+            // Afficher le résumé du tour
+            displayTurnSummary(topMove);
+
+            if (!topMove && gameState.bag.length === 0) {
+                endGame();
+            }
+
+        }, 100);
+    }
+
+    function displayTurnSummary(topMove) {
+        if(topMove) {
+            topMoveInfoEl.textContent = `${topMove.word} (${topMove.score} pts)`;
+        } else {
+            topMoveInfoEl.textContent = "Aucun coup possible. (0 pts)";
+        }
+
+        playerMovesSummaryEl.innerHTML = '';
+        gameState.players.forEach(player => {
+            const move = player.move;
+            let moveText = '';
+            if (!move || !move.word || move.word === '-') {
+                moveText = `a passé (0 pts)`;
+            } else if (!move.valid) {
+                 moveText = `a joué ${move.word} - invalide (0 pts)`;
+            } else {
+                 moveText = `a joué ${move.word} (${move.score} pts)`;
+            }
+            const p = document.createElement('p');
+            p.innerHTML = `<strong class="font-semibold">${player.name}</strong> ${moveText}`;
+            playerMovesSummaryEl.appendChild(p);
+        });
+
+        turnSummary.classList.remove('hidden');
+        nextTurnContainer.classList.remove('hidden');
+        renderBoard();
+        updateScores();
+        updateGameInfo();
+        gameState.turn++;
+    }
+
+    function validateAndScoreMove(word, positionStr) {
+        // 1. Valider le mot dans le dictionnaire
+        if (!DICTIONARY.has(word)) {
+            showMessage(`Le mot "${word}" n'est pas dans le dictionnaire.`);
+            return { word, valid: false, score: 0, reason: "Non dans le dictionnaire" };
+        }
+        
+        // 2. Parser la position
+        const parsedPos = parsePosition(positionStr);
+        if (!parsedPos) {
+            showMessage(`Position "${positionStr}" invalide. Utilisez H8 ou 8H.`);
+            return { word, valid: false, score: 0, reason: "Position invalide" };
+        }
+        const { row, col, direction } = parsedPos;
+
+        // 3. Valider le placement
+        return calculateScore(word, row, col, direction, gameState.grid, gameState.rack, gameState.isFirstMove);
+    }
+    
+    function parsePosition(posStr) {
+        const matchH = posStr.match(/^([A-O])(\d{1,2})$/);
+        const matchV = posStr.match(/^(\d{1,2})([A-O])$/);
+
+        if (matchH) {
+            const col = matchH[1].charCodeAt(0) - 'A'.charCodeAt(0);
+            const row = parseInt(matchH[2], 10) - 1;
+            if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) {
+                return { row, col, direction: 'H' };
+            }
+        } else if (matchV) {
+            const row = parseInt(matchV[1], 10) - 1;
+            const col = matchV[2].charCodeAt(0) - 'A'.charCodeAt(0);
+            if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) {
+                return { row, col, direction: 'V' };
+            }
+        }
+        return null;
+    }
+
+    function calculateScore(word, row, col, direction, grid, rack, isFirstMove) {
+        let score = 0;
+        let wordMultiplier = 1;
+        let lettersToPlace = [];
+        let tempRack = [...rack];
+        let touchesExisting = false;
+
+        // Vérifier les limites et collecter les lettres à placer
+        for (let i = 0; i < word.length; i++) {
+            const r = direction === 'H' ? row : row + i;
+            const c = direction === 'H' ? col + i : col;
+
+            if (r >= GRID_SIZE || c >= GRID_SIZE) return { valid: false, score: 0, reason: "Hors limites" };
+
+            const gridCell = grid[r][c];
+            if (gridCell.letter) {
+                if (gridCell.letter !== word[i]) return { valid: false, score: 0, reason: "Conflit de lettre" };
+                touchesExisting = true;
+            } else {
+                const letterToUse = word[i];
+                const rackIndex = tempRack.indexOf(letterToUse);
+                const jokerIndex = tempRack.indexOf('*');
+
+                if (rackIndex !== -1) {
+                    tempRack.splice(rackIndex, 1);
+                    lettersToPlace.push({ letter: letterToUse, r, c });
+                } else if (jokerIndex !== -1) {
+                    tempRack.splice(jokerIndex, 1);
+                    lettersToPlace.push({ letter: letterToUse, r, c, isJoker: true });
+                } else {
+                    return { valid: false, score: 0, reason: "Lettres manquantes" };
+                }
+            }
+        }
+        
+        if (isFirstMove) {
+            const centerR = Math.floor(GRID_SIZE / 2);
+            const centerC = Math.floor(GRID_SIZE / 2);
+            let passesCenter = false;
+            for (let i = 0; i < word.length; i++) {
+                const r = direction === 'H' ? row : row + i;
+                const c = direction === 'H' ? col + i : col;
+                if(r === centerR && c === centerC) passesCenter = true;
+            }
+            if(!passesCenter) return { valid: false, score: 0, reason: "Le premier mot doit passer par le centre" };
+        } else {
+            if (!touchesExisting && word.length > 0) {
+                 // Le mot doit toucher une lettre existante. Vérifions les adjacences.
+                 let adjacentFound = false;
+                 for(const {r, c} of lettersToPlace) {
+                     if((r > 0 && grid[r-1][c].letter) || (r < GRID_SIZE - 1 && grid[r+1][c].letter) ||
+                        (c > 0 && grid[r][c-1].letter) || (c < GRID_SIZE - 1 && grid[r][c+1].letter)) {
+                         adjacentFound = true;
+                         break;
+                     }
+                 }
+                 if(!adjacentFound) return { valid: false, score: 0, reason: "Le mot doit être connecté" };
+            }
+        }
+
+        let mainWordScore = 0;
+        for (let i = 0; i < word.length; i++) {
+            const r = direction === 'H' ? row : row + i;
+            const c = direction === 'H' ? col + i : col;
+            const gridCell = grid[r][c];
+            const letter = word[i];
+            const letterInfo = lettersToPlace.find(l => l.r === r && l.c === c);
+            const letterValue = letterInfo && letterInfo.isJoker ? 0 : LETTRES[letter].valeur;
+            let currentLetterScore = letterValue;
+
+            if (!gridCell.letter) { // C'est une nouvelle lettre
+                const bonus = gridCell.bonus;
+                if (bonus === BONUS_TYPES.LETTER_DOUBLE) currentLetterScore *= 2;
+                if (bonus === BONUS_TYPES.LETTER_TRIPLE) currentLetterScore *= 3;
+                if (bonus === BONUS_TYPES.WORD_DOUBLE) wordMultiplier *= 2;
+                if (bonus === BONUS_TYPES.WORD_TRIPLE) wordMultiplier *= 3;
+            }
+            mainWordScore += currentLetterScore;
+        }
+        score += mainWordScore * wordMultiplier;
+
+        // Calculer les mots croisés
+        for (const {r, c, isJoker} of lettersToPlace) {
+            const newWordDirection = direction === 'H' ? 'V' : 'H';
+            let crossWord = '';
+            let crossWordScore = 0;
+            let crossWordMultiplier = 1;
+            
+            let start, end;
+            if (newWordDirection === 'H') {
+                start = c;
+                while (start > 0 && grid[r][start-1].letter) start--;
+                end = c;
+                while (end < GRID_SIZE - 1 && grid[r][end+1].letter) end++;
+            } else { // V
+                start = r;
+                while (start > 0 && grid[start-1][c].letter) start--;
+                end = r;
+                while (end < GRID_SIZE - 1 && grid[end+1][c].letter) end++;
+            }
+            
+            for(let i=start; i<=end; i++){
+                const crossR = newWordDirection === 'H' ? r : i;
+                const crossC = newWordDirection === 'H' ? i : c;
+                
+                const letter = (crossR === r && crossC === c) ? word[direction === 'H' ? c-col : r-row] : grid[crossR][crossC].letter;
+                crossWord += letter;
+                
+                let letterVal = LETTRES[letter].valeur;
+                let currentLetterScore = letterVal;
+                
+                if (crossR === r && crossC === c) { // C'est la lettre qu'on vient de poser
+                    if (isJoker) currentLetterScore = 0;
+                    const bonus = grid[r][c].bonus;
+                    if (bonus === BONUS_TYPES.LETTER_DOUBLE) currentLetterScore *= 2;
+                    if (bonus === BONUS_TYPES.LETTER_TRIPLE) currentLetterScore *= 3;
+                    if (bonus === BONUS_TYPES.WORD_DOUBLE) crossWordMultiplier *= 2;
+                    if (bonus === BONUS_TYPES.WORD_TRIPLE) crossWordMultiplier *= 3;
+                }
+                crossWordScore += currentLetterScore;
+            }
+
+            if (crossWord.length > 1) {
+                if (!DICTIONARY.has(crossWord)) {
+                    return { valid: false, score: 0, reason: `Mot croisé invalide: ${crossWord}` };
+                }
+                score += crossWordScore * crossWordMultiplier;
+            }
+        }
+        
+        // Bonus Scrabble
+        if (lettersToPlace.length === 7) {
+            score += 50;
+        }
+
+        return { valid: true, score, word, row, col, direction, lettersToPlace };
+    }
+
+    function placeWordOnGrid(word, row, col, direction) {
+        for (let i = 0; i < word.length; i++) {
+            const r = direction === 'H' ? row : row + i;
+            const c = direction === 'H' ? col + i : col;
+            if (!gameState.grid[r][c].letter) {
+                gameState.grid[r][c].letter = word[i];
+                gameState.grid[r][c].locked = true;
+            }
+        }
+    }
+    
+    // ===================================================================================
+    // IA POUR TROUVER LE MEILLEUR COUP ("TOP")
+    // Approche simplifiée mais fonctionnelle pour le client-side
+    // ===================================================================================
+    function findTopMove() {
+        let bestMove = null;
+        const rack = gameState.rack;
+        const grid = gameState.grid;
+        const isFirstMove = gameState.isFirstMove;
+
+        const anchorSquares = getAnchorSquares(grid, isFirstMove);
+
+        // Créez un Trie pour des recherches de préfixes efficaces
+        const dictionaryTrie = createTrie(DICTIONARY);
+
+        for (const [r, c] of anchorSquares) {
+            // Horizontal
+            findBestMoveAtAnchor(r, c, 'H', rack, grid, dictionaryTrie, (move) => {
+                if (!bestMove || move.score > bestMove.score) {
+                    bestMove = move;
+                }
+            });
+            // Vertical
+            findBestMoveAtAnchor(r, c, 'V', rack, grid, dictionaryTrie, (move) => {
+                if (!bestMove || move.score > bestMove.score) {
+                    bestMove = move;
+                }
+            });
+        }
+        return bestMove;
+    }
+    
+    function getAnchorSquares(grid, isFirstMove) {
+        if (isFirstMove) {
+            return [[Math.floor(GRID_SIZE / 2), Math.floor(GRID_SIZE / 2)]];
+        }
+        const anchors = new Set();
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                if (grid[r][c].letter) {
+                    if (r > 0 && !grid[r - 1][c].letter) anchors.add(`${r - 1},${c}`);
+                    if (r < GRID_SIZE - 1 && !grid[r + 1][c].letter) anchors.add(`${r + 1},${c}`);
+                    if (c > 0 && !grid[r][c - 1].letter) anchors.add(`${r},${c - 1}`);
+                    if (c < GRID_SIZE - 1 && !grid[r][c + 1].letter) anchors.add(`${r},${c + 1}`);
+                }
+            }
+        }
+        return Array.from(anchors).map(s => s.split(',').map(Number));
+    }
+    
+    // Structure de données Trie pour optimiser la recherche de mots
+    function createTrie(dictionary) {
+        const root = { children: {}, isEndOfWord: false };
+        for (const word of dictionary) {
+            let node = root;
+            for (const char of word) {
+                if (!node.children[char]) {
+                    node.children[char] = { children: {}, isEndOfWord: false };
+                }
+                node = node.children[char];
+            }
+            node.isEndOfWord = true;
+        }
+        return root;
+    }
+
+    function findBestMoveAtAnchor(r, c, direction, rack, grid, trie, callback) {
+        // Étendre vers la gauche (ou le haut) pour trouver le début du mot potentiel
+        let prefix = '';
+        let startR = r, startC = c;
+        let tempR = r, tempC = c;
+        if (direction === 'H') {
+            while (tempC > 0 && grid[r][tempC - 1].letter) {
+                tempC--;
+                prefix = grid[r][tempC].letter + prefix;
+            }
+            startC = tempC;
+        } else {
+            while (tempR > 0 && grid[tempR - 1][c].letter) {
+                tempR--;
+                prefix = grid[tempR][c].letter + prefix;
+            }
+            startR = tempR;
+        }
+        
+        // Commencer la recherche récursive
+        let trieNode = trie;
+        for (const char of prefix) {
+            if (!trieNode.children[char]) return; // Préfixe invalide
+            trieNode = trieNode.children[char];
+        }
+
+        generateSuffixes(r, c, prefix, trieNode, rack, direction, grid, (word) => {
+            const startPos = direction === 'H' ? { r, c: c - (word.length - (c - startC) - 1) } : { r: r - (word.length - (r - startR) - 1), c };
+            const move = calculateScore(word, startPos.r, startPos.c, direction, grid, gameState.rack, gameState.isFirstMove);
+            if (move.valid) {
+                callback(move);
+            }
+        });
+    }
+
+    function generateSuffixes(r, c, currentWord, trieNode, rack, direction, grid, onWordFound) {
+        // Cas de base : on est sur une case vide, on essaie les lettres du tirage
+        if (!grid[r] || !grid[r][c] || !grid[r][c].letter) {
+            if (trieNode.isEndOfWord && currentWord.length > 1) {
+                onWordFound(currentWord);
+            }
+            
+            const uniqueRackLetters = [...new Set(rack)]; // Éviter les doublons
+            for (const letter of uniqueRackLetters) {
+                if (trieNode.children[letter]) {
+                    const newRack = [...rack];
+                    newRack.splice(newRack.indexOf(letter), 1);
+                    const nextR = direction === 'H' ? r : r + 1;
+                    const nextC = direction === 'H' ? c + 1 : c;
+                    if(nextR < GRID_SIZE && nextC < GRID_SIZE) {
+                         generateSuffixes(nextR, nextC, currentWord + letter, trieNode.children[letter], newRack, direction, grid, onWordFound);
+                    }
+                }
+                // Gestion du joker
+                if (rack.includes('*')) {
+                     for(const charCode of "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('')) {
+                         if(trieNode.children[charCode]) {
+                            const newRackJoker = [...rack];
+                            newRackJoker.splice(newRackJoker.indexOf('*'), 1);
+                            const nextR = direction === 'H' ? r : r + 1;
+                            const nextC = direction === 'H' ? c + 1 : c;
+                             if(nextR < GRID_SIZE && nextC < GRID_SIZE) {
+                                generateSuffixes(nextR, nextC, currentWord + charCode, trieNode.children[charCode], newRackJoker, direction, grid, onWordFound);
+                             }
+                         }
+                     }
+                }
+            }
+        } else { // On est sur une case avec une lettre
+            const letter = grid[r][c].letter;
+            if (trieNode.children[letter]) {
+                const nextR = direction === 'H' ? r : r + 1;
+                const nextC = direction === 'H' ? c + 1 : c;
+                 if(nextR < GRID_SIZE && nextC < GRID_SIZE) {
+                    generateSuffixes(nextR, nextC, currentWord + letter, trieNode.children[letter], rack, direction, grid, onWordFound);
+                 } else { // Fin de la grille
+                     const finalWord = currentWord + letter;
+                     if(trieNode.children[letter].isEndOfWord) {
+                         onWordFound(finalWord);
+                     }
+                 }
+            }
+        }
+    }
+    
+    function endGame() {
+        if(gameState.gameEnded) return;
+        gameState.gameEnded = true;
+        clearInterval(timerInterval);
+
+        // Afficher les scores finaux
+        const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
+        finalScoresEl.innerHTML = sortedPlayers.map((p, index) => `
+            <div class="flex justify-between items-center p-2 rounded ${index === 0 ? 'bg-yellow-200' : ''}">
+                <span class="font-bold text-lg">${index + 1}. ${p.name}</span>
+                <span class="font-bold text-lg">${p.score} pts</span>
+            </div>
+        `).join('');
+
+        // Afficher le modal
+        gameOverModal.classList.remove('hidden');
+        setTimeout(() => {
+            gameOverModal.querySelector('div > div').classList.remove('scale-95', 'opacity-0');
+        }, 10);
+    }
+    
+    // ===================================================================================
+    // FONCTIONS D'AFFICHAGE (RENDERING)
+    // ===================================================================================
+    function renderBoard() {
+        boardContainer.innerHTML = '';
+        const bonusColors = {
+            [BONUS_TYPES.WORD_TRIPLE]: 'bg-red-500 text-white',
+            [BONUS_TYPES.WORD_DOUBLE]: 'bg-pink-400 text-white',
+            [BONUS_TYPES.LETTER_TRIPLE]: 'bg-blue-500 text-white',
+            [BONUS_TYPES.LETTER_DOUBLE]: 'bg-sky-300 text-white',
+            [BONUS_TYPES.NONE]: 'bg-green-100'
+        };
+        const centerBonusColor = 'bg-pink-400 text-white';
+
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const cell = document.createElement('div');
+                const cellData = gameState.grid[r][c];
+                let colorClass = bonusColors[cellData.bonus];
+                if (r === 7 && c === 7 && cellData.bonus === BONUS_TYPES.NONE) {
+                    colorClass = centerBonusColor; // Case centrale
+                }
+                
+                cell.className = `grid-cell ${colorClass}`;
+                
+                if (cellData.letter) {
+                    cell.innerHTML = `
+                        <div class="board-tile tile bg-amber-200 text-amber-900 border-2 border-amber-400 rounded-md flex items-center justify-center w-full h-full tile-on-board">
+                            <span>${cellData.letter}</span>
+                            <sub class="text-xs self-end mb-1 ml-0.5">${LETTRES[cellData.letter]?.valeur || 0}</sub>
+                        </div>
+                    `;
+                } else {
+                    const bonusText = cellData.bonus.replace('_', ' ').replace('WORD', 'MOT').replace('LETTER', 'LETTRE');
+                    const textContent = (r === 7 && c === 7) ? '★' : (bonusText !== 'NONE' ? bonusText : '');
+                    cell.innerHTML = `<span class="bonus-text">${textContent}</span>`;
+                }
+                boardContainer.appendChild(cell);
+            }
+        }
+    }
+
+    function renderRack() {
+        letterRack.innerHTML = gameState.rack.map(letter => `
+            <div class="rack-tile tile bg-amber-200 text-amber-900 border-2 border-amber-400 rounded-md flex items-center justify-center shadow-md">
+                <span>${letter === '*' ? 'Joker' : letter}</span>
+                <sub class="text-xs self-end mb-1 ml-0.5">${LETTRES[letter].valeur}</sub>
+            </div>
+        `).join('');
+    }
+
+    function updateScores() {
+        scoresContainer.innerHTML = gameState.players.map(p => `
+            <div class="flex justify-between items-center p-2 rounded bg-gray-100">
+                <span class="font-semibold">${p.name}</span>
+                <span class="font-bold text-lg">${p.score} pts</span>
+            </div>
+        `).join('');
+    }
+    
+    function updateGameInfo() {
+        turnNumberEl.textContent = gameState.turn;
+        bagCountEl.textContent = gameState.bag.length;
+    }
+    
+    function showMessage(msg) {
+        messageText.textContent = msg;
+        messageModal.classList.remove('hidden');
+        setTimeout(() => {
+            messageModal.querySelector('div > div').classList.remove('scale-95', 'opacity-0');
+        }, 10);
+    }
+    
+    function hideMessage() {
+        messageModal.querySelector('div > div').classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+            messageModal.classList.add('hidden');
+        }, 200);
+    }
+
+    // ===================================================================================
+    // GESTIONNAIRES D'ÉVÉNEMENTS
+    // ===================================================================================
+    playerCountSelect.addEventListener('change', () => {
+        const count = parseInt(playerCountSelect.value);
+        playerNamesContainer.innerHTML = '';
+        for (let i = 0; i < count; i++) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = `player-name-${i}`;
+            input.placeholder = `Nom du Joueur ${i + 1}`;
+            input.className = 'w-full p-2 border border-gray-300 rounded-md';
+            playerNamesContainer.appendChild(input);
+        }
+    });
+
+    startGameBtn.addEventListener('click', initGame);
+    submitMoveBtn.addEventListener('click', () => handlePlayerMove(false));
+    passTurnBtn.addEventListener('click', () => handlePlayerMove(true));
+    nextTurnBtn.addEventListener('click', startTurn);
+    playAgainBtn.addEventListener('click', () => {
+        gameScreen.classList.add('hidden');
+        setupScreen.classList.remove('hidden');
+        gameOverModal.classList.add('hidden');
+        playerCountSelect.dispatchEvent(new Event('change')); // Reset player names
+    });
+    closeMessageBtn.addEventListener('click', hideMessage);
+
+    // Initial setup
+    playerCountSelect.dispatchEvent(new Event('change'));
+
+</script>
+
+</body>
+</html>
