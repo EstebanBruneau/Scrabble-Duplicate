@@ -1,6 +1,33 @@
 import { GRID_SIZE, BONUS_TYPES } from './constants.js';
 import { gameState } from './gameState.js';
 
+let timerInterval = null;
+let timerSeconds = 180; // 3 minutes per turn
+
+function updateTimerUI(timerEl) {
+    const min = Math.floor(timerSeconds / 60);
+    const sec = timerSeconds % 60;
+    timerEl.textContent = `${min}:${sec.toString().padStart(2, '0')}`;
+}
+
+function startTimer(timerEl, onExpire) {
+    clearInterval(timerInterval);
+    timerSeconds = 180;
+    updateTimerUI(timerEl);
+    timerInterval = setInterval(() => {
+        timerSeconds--;
+        updateTimerUI(timerEl);
+        if (timerSeconds <= 0) {
+            clearInterval(timerInterval);
+            if (typeof onExpire === 'function') onExpire();
+        }
+    }, 1000);
+}
+
+function stopTimer() {
+    clearInterval(timerInterval);
+}
+
 export function renderBoardUI(boardContainer) {
     boardContainer.innerHTML = '';
     // Create a wrapper div for the board with labels
@@ -62,3 +89,9 @@ export function updateGameInfoUI(turnNumberEl, bagCountEl) {
     turnNumberEl.textContent = gameState.turn;
     bagCountEl.textContent = gameState.bag.length;
 }
+
+// === TIMER INTEGRATION WITH MAIN ===
+// The following should be called from main.js:
+// - startTimer(timerEl, onExpire) at the start of each turn
+// - stopTimer() when the turn ends or is submitted
+export { startTimer, stopTimer, updateTimerUI };

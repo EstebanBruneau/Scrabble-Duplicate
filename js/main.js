@@ -1,5 +1,6 @@
 import { gameState } from './gameState.js';
 import { validateAndScoreMove, placeWordOnGrid } from './moveValidation.js';
+import { startTimer, stopTimer } from './ui.js';
 
 
 // --- ODS9 Dictionary Loader ---
@@ -235,6 +236,14 @@ document.addEventListener('DOMContentLoaded', () => {
         updateScoresUI();
         updateGameInfoUI();
         promptNextPlayerUI();
+        startTimer(timerEl, () => {
+            // Timer expired: auto-pass the turn
+            showMessage('Temps écoulé ! Tour passé automatiquement.');
+            const player = gameState.players[gameState.currentPlayerIndex];
+            player.move = { word: '-', position: null, direction: null, score: 0, valid: true };
+            gameState.currentPlayerIndex++;
+            promptNextPlayerUI();
+        });
     });
 
     // Render board
@@ -286,8 +295,16 @@ document.addEventListener('DOMContentLoaded', () => {
             wordInput.value = '';
             positionInput.value = '';
             wordInput.focus();
+            startTimer(timerEl, () => {
+                showMessage('Temps écoulé ! Tour passé automatiquement.');
+                const player = gameState.players[gameState.currentPlayerIndex];
+                player.move = { word: '-', position: null, direction: null, score: 0, valid: true };
+                gameState.currentPlayerIndex++;
+                promptNextPlayerUI();
+            });
         } else {
             // All players played, end turn
+            stopTimer();
             endTurn();
             renderRackUI();
             updateScoresUI();
@@ -298,6 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Submit move
     submitMoveBtn.addEventListener('click', async () => {
+        stopTimer();
         const word = wordInput.value.trim().toUpperCase();
         const pos = positionInput.value.trim().toUpperCase();
         console.log('[DEBUG] Soumettre clicked. Word:', word, 'Position:', pos, 'Rack:', [...gameState.rack]);
@@ -341,6 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Pass turn
     passTurnBtn.addEventListener('click', () => {
+        stopTimer();
         const player = gameState.players[gameState.currentPlayerIndex];
         player.move = { word: '-', position: null, direction: null, score: 0, valid: true };
         gameState.currentPlayerIndex++;
@@ -349,6 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Next turn
     nextTurnBtn.addEventListener('click', () => {
+        stopTimer();
         startTurn();
         renderRackUI();
         updateScoresUI();
@@ -358,6 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Play again
     playAgainBtn.addEventListener('click', () => {
+        stopTimer();
         gameScreen.classList.add('hidden');
         setupScreen.classList.remove('hidden');
         gameOverModal.classList.add('hidden');
