@@ -336,6 +336,10 @@ document.addEventListener('DOMContentLoaded', () => {
         player.move = { word, position: pos, direction: result.direction, score: result.score, valid: true };
         player.score += result.score;
         placeWordOnGrid(word, result.row, result.col, result.direction);
+        // After first move, set isFirstMove to false
+        if (gameState.isFirstMove) {
+            gameState.isFirstMove = false;
+        }
         // Remove used letters from rack (use same logic as canFormWordFromRack)
         let rackCopy = [...gameState.rack];
         for (const letter of word) {

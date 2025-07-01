@@ -1,5 +1,6 @@
 import { isWordValid } from './dictionary.js';
 import { gameState } from './gameState.js';
+import { LETTRES, BONUS_TYPES } from './constants.js';
 
 function canFormWordFromRack(word, rack) {
     const rackCopy = [...rack];
@@ -89,8 +90,59 @@ export function parsePosition(posStr) {
 }
 
 export function calculateScore(word, row, col, direction, grid, rack, isFirstMove) {
-    // TODO: Implement full scoring logic
-    return { valid: true, score: 0, word, row, col, direction, lettersToPlace: [] };
+    word = word.toUpperCase();
+    let total = 0;
+    let wordMultiplier = 1;
+    let usedTiles = [];
+    let lettersToPlace = [];
+    let rackCopy = [...rack];
+    let placedCount = 0;
+    for (let i = 0; i < word.length; i++) {
+        let r = row + (direction === 'V' ? i : 0);
+        let c = col + (direction === 'H' ? i : 0);
+        const tile = grid[r][c];
+        const letter = word[i];
+        let letterScore = 0;
+        let isBlank = false;
+        // Determine if this letter is newly placed (not already on the board)
+        if (!tile.letter) {
+            // Use from rack (prefer real letter, fallback to blank)
+            let rackIdx = rackCopy.indexOf(letter);
+            if (rackIdx === -1) {
+                rackIdx = rackCopy.indexOf('*');
+                isBlank = true;
+            }
+            if (rackIdx !== -1) {
+                rackCopy.splice(rackIdx, 1);
+                placedCount++;
+                lettersToPlace.push({ r, c, letter, isBlank });
+            }
+            // Letter value
+            letterScore = isBlank ? 0 : (LETTRES[letter] ? LETTRES[letter].valeur : 0);
+            // Apply letter bonus
+            if (tile.bonus === BONUS_TYPES.LETTER_DOUBLE) {
+                letterScore *= 2;
+            } else if (tile.bonus === BONUS_TYPES.LETTER_TRIPLE) {
+                letterScore *= 3;
+            }
+            // Apply word bonus
+            if (tile.bonus === BONUS_TYPES.WORD_DOUBLE) {
+                wordMultiplier *= 2;
+            } else if (tile.bonus === BONUS_TYPES.WORD_TRIPLE) {
+                wordMultiplier *= 3;
+            }
+        } else {
+            // Already on board, just add value
+            letterScore = (LETTRES[letter] ? LETTRES[letter].valeur : 0);
+        }
+        total += letterScore;
+    }
+    total *= wordMultiplier;
+    // Bingo (all 7 tiles used)
+    if (placedCount === 7) {
+        total += 50;
+    }
+    return { valid: true, score: total, word, row, col, direction, lettersToPlace };
 }
 
 export function placeWordOnGrid(word, row, col, direction) {
