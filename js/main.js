@@ -1,4 +1,6 @@
-// main.js - Scrabble Duplicate Français
+import { gameState } from './gameState.js';
+import { validateAndScoreMove, placeWordOnGrid } from './moveValidation.js';
+
 
 // --- ODS9 Dictionary Loader ---
 const dictionaryCache = {};
@@ -54,7 +56,6 @@ export const BONUS_POSITIONS = {
 };
 
 // --- Game State ---
-export let gameState = {};
 export let timerInterval;
 
 export function createBag() {
@@ -87,17 +88,15 @@ export function createGrid() {
 }
 
 export function initGame(playerCount, playerNames) {
-    gameState = {
-        bag: createBag(),
-        grid: createGrid(),
-        rack: [],
-        players: playerNames.map(name => ({ name, score: 0, move: null })),
-        turn: 1,
-        isFirstMove: true,
-        currentPlayerIndex: 0,
-        movesThisTurn: 0,
-        gameEnded: false
-    };
+    gameState.bag = createBag();
+    gameState.grid = createGrid();
+    gameState.rack = [];
+    gameState.players = playerNames.map(name => ({ name, score: 0, move: null }));
+    gameState.turn = 1;
+    gameState.isFirstMove = true;
+    gameState.currentPlayerIndex = 0;
+    gameState.movesThisTurn = 0;
+    gameState.gameEnded = false;
 }
 
 export function startTurn() {
@@ -114,26 +113,26 @@ export function startTurn() {
     gameState.players.forEach(p => p.move = null);
 }
 
-export async function validateAndScoreMove(word, positionStr) {
-    const valid = await isWordValid(word);
-    if (!valid) return { valid: false, score: 0, reason: "Mot non valide dans l'ODS9" };
-    const parsedPos = parsePosition(positionStr);
-    if (!parsedPos) return { valid: false, score: 0, reason: "Position invalide" };
-    const { row, col, direction } = parsedPos;
-    return calculateScore(word, row, col, direction, gameState.grid, gameState.rack, gameState.isFirstMove);
-}
+// export async function validateAndScoreMove(word, positionStr, directionOverride) {
+//     const valid = await isWordValid(word);
+//     if (!valid) return { valid: false, score: 0, reason: "Mot non valide dans l'ODS9" };
+//     const parsedPos = parsePosition(positionStr, directionOverride);
+//     if (!parsedPos) return { valid: false, score: 0, reason: "Position invalide" };
+//     const { row, col, direction } = parsedPos;
+//     return calculateScore(word, row, col, direction, gameState.grid, gameState.rack, gameState.isFirstMove);
+// }
 
-export function parsePosition(posStr) {
+export function parsePosition(posStr, directionOverride) {
     const matchH = posStr.match(/^([A-O])(\d{1,2})$/i);
     const matchV = posStr.match(/^(\d{1,2})([A-O])$/i);
     if (matchH) {
         const row = matchH[1].toUpperCase().charCodeAt(0) - 65;
         const col = parseInt(matchH[2], 10) - 1;
-        return { row, col, direction: 'H' };
+        return { row, col, direction: directionOverride || 'H' };
     } else if (matchV) {
         const row = parseInt(matchV[1], 10) - 1;
         const col = matchV[2].toUpperCase().charCodeAt(0) - 65;
-        return { row, col, direction: 'V' };
+        return { row, col, direction: directionOverride || 'V' };
     }
     return null;
 }
@@ -143,9 +142,9 @@ export function calculateScore(word, row, col, direction, grid, rack, isFirstMov
     return { valid: true, score: 0, word, row, col, direction, lettersToPlace: [] };
 }
 
-export function placeWordOnGrid(word, row, col, direction) {
-    // TODO: Implement word placement on grid
-}
+// export function placeWordOnGrid(word, row, col, direction) {
+//     // TODO: Implement word placement on grid
+// }
 
 // --- UI Integration ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -177,6 +176,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const messageModal = document.getElementById('message-modal');
     const messageText = document.getElementById('message-text');
     const closeMessageBtn = document.getElementById('close-message-btn');
+    const directionToggleBtn = document.getElementById('direction-toggle-btn');
+
+    // Direction toggle state
+    let currentDirection = 'H';
+    directionToggleBtn.addEventListener('click', () => {
+        currentDirection = currentDirection === 'H' ? 'V' : 'H';
+        directionToggleBtn.textContent = currentDirection;
+        directionToggleBtn.setAttribute('aria-label', currentDirection === 'H' ? 'Horizontal' : 'Vertical');
+    });
 
     // Player name fields
     function updatePlayerNameFields() {
@@ -198,6 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
     startGameBtn.addEventListener('click', () => {
         const playerNames = Array.from(playerNamesContainer.querySelectorAll('input')).map(input => input.value.trim() || 'Joueur');
         initGame(playerNames.length, playerNames);
+        startTurn();
         setupScreen.classList.add('hidden');
         gameScreen.classList.remove('hidden');
         renderBoardUI();
@@ -232,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
         letterRack.innerHTML = '';
         for (const letter of gameState.rack) {
             const span = document.createElement('span');
-            span.className = 'inline-block w-10 h-10 bg-yellow-100 border border-gray-400 rounded text-center leading-10 font-bold text-xl mx-1';
+            span.className = 'inline-block w-10 h-10 bg-yellow-100 border border-gray-400 rounded text-center leading-10 font-bold text-xl mx-1 shadow';
             span.textContent = letter;
             letterRack.appendChild(span);
         }
@@ -266,12 +275,17 @@ document.addEventListener('DOMContentLoaded', () => {
     submitMoveBtn.addEventListener('click', async () => {
         const word = wordInput.value.trim().toUpperCase();
         const pos = positionInput.value.trim().toUpperCase();
+        console.log('[DEBUG] Soumettre clicked. Word:', word, 'Position:', pos, 'Rack:', [...gameState.rack]);
         if (!word || !pos) {
+            console.log('[DEBUG] Missing word or position');
             showMessage('Veuillez entrer un mot et une position.');
             return;
         }
+        // Use moveValidation.js logic (call with only two arguments)
         const result = await validateAndScoreMove(word, pos);
+        console.log('[DEBUG] validateAndScoreMove result:', result);
         if (!result.valid) {
+            console.log('[DEBUG] Invalid move, reason:', result.reason);
             showMessage(result.reason || 'Coup invalide.');
             return;
         }
@@ -279,7 +293,20 @@ document.addEventListener('DOMContentLoaded', () => {
         player.move = { word, position: pos, direction: result.direction, score: result.score, valid: true };
         player.score += result.score;
         placeWordOnGrid(word, result.row, result.col, result.direction);
-        // TODO: update rack correctly after placement
+        // Remove used letters from rack (use same logic as canFormWordFromRack)
+        let rackCopy = [...gameState.rack];
+        for (const letter of word) {
+            let idx = rackCopy.indexOf(letter);
+            if (idx !== -1) {
+                rackCopy.splice(idx, 1);
+            } else {
+                idx = rackCopy.indexOf('*');
+                if (idx !== -1) {
+                    rackCopy.splice(idx, 1);
+                }
+            }
+        }
+        gameState.rack = rackCopy;
         renderBoardUI();
         renderRackUI();
         updateScoresUI();
@@ -328,3 +355,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     closeMessageBtn.addEventListener('click', hideMessage);
 });
+

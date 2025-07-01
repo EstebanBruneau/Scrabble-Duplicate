@@ -1,14 +1,38 @@
 import { isWordValid } from './dictionary.js';
 import { gameState } from './gameState.js';
 
+function canFormWordFromRack(word, rack) {
+    const rackCopy = [...rack];
+    for (const letter of word.toUpperCase()) {
+        const idx = rackCopy.indexOf(letter);
+        if (idx !== -1) {
+            rackCopy.splice(idx, 1);
+        } else {
+            // Try to use a blank tile '*'
+            const blankIdx = rackCopy.indexOf('*');
+            if (blankIdx !== -1) {
+                rackCopy.splice(blankIdx, 1);
+            } else {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 export async function validateAndScoreMove(word, positionStr) {
     const valid = await isWordValid(word);
     if (!valid) return { valid: false, score: 0, reason: "Mot non valide dans l'ODS9" };
+    if (!canFormWordFromRack(word, gameState.rack)) {
+        return { valid: false, score: 0, reason: "Le mot utilise des lettres non présentes dans le tirage." };
+    }
     const parsedPos = parsePosition(positionStr);
     if (!parsedPos) return { valid: false, score: 0, reason: "Position invalide" };
     const { row, col, direction } = parsedPos;
     return calculateScore(word, row, col, direction, gameState.grid, gameState.rack, gameState.isFirstMove);
 }
+
+
 
 export function parsePosition(posStr) {
     const matchH = posStr.match(/^([A-O])(\d{1,2})$/i);
@@ -31,5 +55,20 @@ export function calculateScore(word, row, col, direction, grid, rack, isFirstMov
 }
 
 export function placeWordOnGrid(word, row, col, direction) {
-    // TODO: Implement word placement on grid
+    // Place the word on the grid, locking the tiles and updating the grid state
+    word = word.toUpperCase();
+    let r = row, c = col;
+    for (let i = 0; i < word.length; i++) {
+        if (r < 0 || r >= gameState.grid.length || c < 0 || c >= gameState.grid[0].length) break;
+        const tile = gameState.grid[r][c];
+        if (!tile.letter) {
+            tile.letter = word[i];
+            tile.locked = true;
+        }
+        if (direction === 'H') {
+            c++;
+        } else {
+            r++;
+        }
+    }
 }
