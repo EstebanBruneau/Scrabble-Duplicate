@@ -40,10 +40,12 @@ def fetch_words_for_length(word_length):
     return words
 
 if __name__ == "__main__":
-    for length in range(6, 22):
+    for length in range(2, 6):
         print(f"Fetching {length}-letter words...")
         words = fetch_words_for_length(length)
         with open(f"mots{length}lettres.txt", "w", encoding="utf-8") as f:
             for word in words:
                 f.write(word + "\n")
         print(f"Saved {len(words)} words for length {length}")
+
+# ez

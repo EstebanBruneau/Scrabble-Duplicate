@@ -26,6 +26,12 @@ The game ends when there are no more letters in the bag and no more moves are po
 
 ---
 
+# Extraction des mots
+
+Les listes de mots utilisées dans ce projet sont extraites du site [listesdemots.net](https://www.listesdemots.net/), qui propose des listes exhaustives de l'ODS 9. Un script Python extrait les mots automatiquement parce que j'avais la flemme de tout copier coller. Merci à l'équipe de [listesdemots.net](https://www.listesdemots.net/) pour leur travail et la mise à disposition de ces ressources.
+
+---
+
 ## Ideas for the future
 
 * [ ] Allow drag-and-drop of letters onto the board.
