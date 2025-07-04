@@ -13,14 +13,14 @@ Welcome to this little Scrabble Duplicate project. This is a web version playabl
 
 The game ends when there are no more letters in the bag and no more moves are possible.
 
-# Extraction des mots
+**Extraction des mots**
 
 Les listes de mots utilisées dans ce projet sont extraites du site [listesdemots.net](https://www.listesdemots.net/), qui propose des listes exhaustives de l'ODS 9. Un script Python extrait les mots automatiquement parce que j'avais la flemme de tout copier coller. Merci à l'équipe de [listesdemots.net](https://www.listesdemots.net/) pour leur travail et la mise à disposition de ces ressources.
 
 
 
 
-# Need to add : 
+**Need to add :** 
 
 #### Full scoring logic in calculateScore
 
