@@ -26,14 +26,6 @@ Les listes de mots utilisées dans ce projet sont extraites du site [listesdemot
 
 Handle Scrabble scoring rules, bonuses, word/letter multipliers, crosswords, and Scrabble bonuses (e.g., 50 points for using all 7 tiles).
 
-#### Word placement logic in placeWordOnGrid
-
-Actually place the word on the grid, lock tiles, and update the grid state.
-
-#### Rack update after word placement
-
-Remove only the used tiles from the player's rack after a valid move.
-
 #### Handle end of turn for all players
 
 Implement handleEndOfTurnInputs to show the turn summary, compute the best move (top), and manage the transition to the next turn.
@@ -42,20 +34,8 @@ Implement handleEndOfTurnInputs to show the turn summary, compute the best move 
 
 Detect when the bag and racks are empty, show the final scores, and display the end-of-game modal.
 
-#### Timer logic and display
-
-Implement the per-turn timer and update the timer display in the UI.
-
-#### Advanced validation
-
-Ensure word placement is legal (touches existing words, fits on the board, etc.).
-
-#### UI polish
-
-Improve board and rack rendering, highlight bonuses, and add visual feedback.
-
 
 ## More ideas 
 Allow drag-and-drop of letters onto the board.
-Add sound effects for word placement.
+Add sound effects for word placement. (bruh)
 A  multiplayer mode
