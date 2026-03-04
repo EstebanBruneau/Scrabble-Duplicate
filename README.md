@@ -37,5 +37,5 @@ Detect when the bag and racks are empty, show the final scores, and display the 
 
 ## More ideas 
 Allow drag-and-drop of letters onto the board.
-Add sound effects for word placement. (bruh)
+Add sound effects for word placement.
 A  multiplayer mode
